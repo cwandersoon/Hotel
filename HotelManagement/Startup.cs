@@ -1,9 +1,11 @@
 ﻿using Autofac;
+using Autofac.Extensions.DependencyInjection;
 using HotelManagement.Data;
+using HotelManagement.Interfaces;
+using HotelManagement.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.EntityFrameworkCore;
-using Autofac.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -24,6 +26,7 @@ namespace HotelManagement
 
             builder.RegisterType<DataInitializer>().AsSelf();
             builder.RegisterType<Application>().AsSelf();
+            builder.RegisterType<RoomService>().As<IRoomService>().InstancePerLifetimeScope();
 
             return builder.Build();
         }

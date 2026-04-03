@@ -1,4 +1,5 @@
 ﻿using HotelManagement.Data;
+using HotelManagement.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using System;
@@ -11,11 +12,13 @@ namespace HotelManagement
     {
         private readonly ApplicationDbContext _context;
         private readonly DataInitializer _dataInitializer;
+        private readonly IRoomService _roomService;
 
-        public Application(ApplicationDbContext context, DataInitializer dataInitializer)
+        public Application(ApplicationDbContext context, DataInitializer dataInitializer, IRoomService roomService)
         {
             _context = context;
             _dataInitializer = dataInitializer;
+            _roomService = roomService;
         }
 
         public void Run()
