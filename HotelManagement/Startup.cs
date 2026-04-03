@@ -22,6 +22,7 @@ namespace HotelManagement
                 return factory.CreateDbContext(Array.Empty<string>());
             }).AsSelf().InstancePerLifetimeScope();
 
+            builder.RegisterType<DataInitializer>().AsSelf();
             builder.RegisterType<Application>().AsSelf();
 
             return builder.Build();

@@ -10,16 +10,17 @@ namespace HotelManagement
     public class Application
     {
         private readonly ApplicationDbContext _context;
+        private readonly DataInitializer _dataInitializer;
 
-        public Application(ApplicationDbContext context)
+        public Application(ApplicationDbContext context, DataInitializer dataInitializer)
         {
             _context = context;
+            _dataInitializer = dataInitializer;
         }
 
         public void Run()
         {
-            var dataInitializer = new DataInitializer();
-            dataInitializer.MigrateAndSeed(_context);
+            _dataInitializer.MigrateAndSeed(_context);
         }
     }
 }

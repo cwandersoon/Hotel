@@ -23,12 +23,5 @@ namespace HotelManagement.Data
         public DbSet<Invoice> Invoices { get; set; }
         public DbSet<Room> Rooms { get; set; }
 
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            if (!optionsBuilder.IsConfigured)
-            {
-                optionsBuilder.UseSqlServer("Server=localhost;Database=HotelDb;Trusted_Connection=True;TrustServerCertificate=true;");
-            }
-        }
     }
 }
