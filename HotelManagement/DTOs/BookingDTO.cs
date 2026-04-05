@@ -1,0 +1,19 @@
+﻿using HotelManagement.Models;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Text;
+
+namespace HotelManagement.DTOs
+{
+    public class BookingDTO
+    {
+        public int Id { get; set; }
+        public string CustomerName { get; set; } = string.Empty;
+        public int RoomNumber { get; set; }
+        public DateTime ArrivalDate { get; set; }
+        public DateTime DepartureDate { get; set; }
+        public int ExtraBedsOrdered { get; set; }
+        public decimal TotalPrice { get; set; }
+    }
+}

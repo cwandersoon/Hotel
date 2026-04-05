@@ -11,19 +11,11 @@ namespace HotelManagement.Models
     public class Room
     {
         public int Id { get; set; }
-
-        [Required]
         public int RoomNumber { get; set; }
-
-        [Required]
         public RoomType Type { get; set; }
-
-        [Required]
-        [Column(TypeName = "decimal(9,2)")]
         public decimal PricePerNight { get; set; }
-
         public int ExtraBedCapacity { get; set; }
-
         public List<Booking> Bookings { get; set; } = new();
+        public bool IsDeleted { get; set; } = false;
     }
 }

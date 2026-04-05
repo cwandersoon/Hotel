@@ -1,19 +1,21 @@
-﻿using System;
+﻿using HotelManagement.Models;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text;
 
-namespace HotelManagement.Models
+namespace HotelManagement.DTOs
 {
-    public class Invoice
+    public class InvoiceDTO
     {
         public int Id { get; set; }
+        public string CustomerName { get; set; } = string.Empty;
         public decimal TotalAmount { get; set; }
-        public DateTime IssueDate { get; set; } = DateTime.Now;
+        public DateTime DueDate { get; set; }
         public bool IsPaid { get; set; }
         public int BookingId { get; set; }
-        public Booking Booking { get; set; } = null!;
-        public bool IsDeleted { get; set; } = false;
+
+        public string Status => IsPaid ? "Betald" : "Obetald";
     }
 }

@@ -9,21 +9,21 @@ namespace HotelManagement.Data
 {
     public class DataInitializer
     {
-        public void MigrateAndSeed(ApplicationDbContext context)
+        public void MigrateAndSeed(ApplicationDbContext dbContext)
         {
-            context.Database.Migrate();
+            dbContext.Database.Migrate();
 
-            SeedCustomers(context);
-            SeedRooms(context);
-            context.SaveChanges();
+            SeedCustomers(dbContext);
+            SeedRooms(dbContext);
+            dbContext.SaveChanges();
 
-            SeedBookings(context);
-            context.SaveChanges();
+            SeedBookings(dbContext);
+            dbContext.SaveChanges();
         }
 
-        private void SeedCustomers(ApplicationDbContext context)
+        private void SeedCustomers(ApplicationDbContext dbContext)
         {
-            if (!context.Customers.Any())
+            if (!dbContext.Customers.Any())
             {
                 var customerFaker = new Faker<Customer>("sv")
                     .RuleFor(c => c.FirstName, f => f.Name.FirstName())
@@ -35,14 +35,14 @@ namespace HotelManagement.Data
                     .RuleFor(c => c.City, f => f.Address.City());
 
                 var customers = customerFaker.Generate(25);
-                context.Customers.AddRange(customers);
+                dbContext.Customers.AddRange(customers);
                 Console.WriteLine("25 kunder genererade.");
             }
         }
 
-        private void SeedRooms(ApplicationDbContext context)
+        private void SeedRooms(ApplicationDbContext dbContext)
         {
-            if (!context.Rooms.Any())
+            if (!dbContext.Rooms.Any())
             {
                 var rooms = new List<Room>();
 
@@ -79,17 +79,17 @@ namespace HotelManagement.Data
                     });
                 }
 
-                context.Rooms.AddRange(rooms);
+                dbContext.Rooms.AddRange(rooms);
                 Console.WriteLine("15 rum har skapats.");
             }
         }
 
-        private void SeedBookings(ApplicationDbContext context)
+        private void SeedBookings(ApplicationDbContext dbContext)
         {
-            if (!context.Bookings.Any())
+            if (!dbContext.Bookings.Any())
             {
-                var customers = context.Customers.ToList();
-                var rooms = context.Rooms.ToList();
+                var customers = dbContext.Customers.ToList();
+                var rooms = dbContext.Rooms.ToList();
                 var faker = new Faker();
                 var bookings = new List<Booking>();
 
@@ -111,7 +111,7 @@ namespace HotelManagement.Data
                     });
                 }
 
-                context.Bookings.AddRange(bookings);
+                dbContext.Bookings.AddRange(bookings);
                 Console.WriteLine("10 bokningar har skapats!");
             }
         }
