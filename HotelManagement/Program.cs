@@ -1,14 +1,20 @@
 ﻿using Autofac;
 using HotelManagement.Data;
+using HotelManagement.Modules;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
 namespace HotelManagement;
-    internal class Program
-    {
+
+internal class Program
+{
     static void Main(string[] args)
     {
-        var container = Startup.Configure();
+        var builder = new ContainerBuilder();
+
+        builder.RegisterModule<HotelModule>();
+
+        var container = builder.Build();
 
         using var scope = container.BeginLifetimeScope();
 

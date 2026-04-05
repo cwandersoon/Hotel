@@ -1,4 +1,5 @@
-﻿using HotelManagement.Data;
+﻿using AutoMapper;
+using HotelManagement.Data;
 using HotelManagement.DTOs;
 using HotelManagement.Interfaces;
 using HotelManagement.Models;
@@ -11,21 +12,17 @@ namespace HotelManagement.Services
     public class RoomService : IRoomService
     {
         private readonly ApplicationDbContext _dbContext;
+        private readonly IMapper _mapper;
 
-        public RoomService(ApplicationDbContext dbContext)
+        public RoomService(ApplicationDbContext dbContext, IMapper mapper)
         {
             _dbContext = dbContext;
+            _mapper = mapper;
         }
 
         public int AddRoom(RoomDTO roomDto)
         {
-            var room = new Room
-            {
-                RoomNumber = roomDto.RoomNumber,
-                PricePerNight = roomDto.PricePerNight,
-                ExtraBedCapacity = roomDto.ExtraBedCapacity,
-                Type = Enum.Parse<RoomType>(roomDto.Type)
-            };
+            var room = _mapper.Map<Room>(roomDto);
 
             _dbContext.Rooms.Add(room);
             _dbContext.SaveChanges();
@@ -35,46 +32,20 @@ namespace HotelManagement.Services
 
         public List<RoomDTO> GetAllRooms()
         {
-            return _dbContext.Rooms
-                .Select(r => new RoomDTO
-                {
-                    Id = r.Id,
-                    RoomNumber = r.RoomNumber,
-                    Type = r.Type.ToString(),
-                    PricePerNight = r.PricePerNight,
-                    ExtraBedCapacity = r.ExtraBedCapacity,
-                })
-                .ToList();
+            var rooms = _dbContext.Rooms.ToList();
+            return _mapper.Map<List<RoomDTO>>(rooms);
         }
 
         public RoomDTO? GetRoomByNumber(int number)
         {
-            return _dbContext.Rooms
-                .Where(r => r.RoomNumber == number)
-                .Select(r => new RoomDTO
-                {
-                    Id = r.Id,
-                    RoomNumber = r.RoomNumber,
-                    Type = r.Type.ToString(),
-                    PricePerNight = r.PricePerNight,
-                    ExtraBedCapacity = r.ExtraBedCapacity,
-                })
-                .FirstOrDefault();
+            var room = _dbContext.Rooms.FirstOrDefault(r => r.RoomNumber == number);
+            return _mapper.Map<RoomDTO>(room);
         }
 
         public RoomDTO? GetRoomById(int roomId)
         {
-            return _dbContext.Rooms
-                .Where(r => r.Id == roomId)
-                .Select(r => new RoomDTO
-                {
-                    Id = r.Id,
-                    RoomNumber = r.RoomNumber,
-                    Type = r.Type.ToString(),
-                    PricePerNight = r.PricePerNight,
-                    ExtraBedCapacity = r.ExtraBedCapacity,
-                })
-                .FirstOrDefault();
+            var room = _dbContext.Rooms.Find(roomId);
+            return _mapper.Map<RoomDTO>(room);
         }
 
         public List<RoomDTO> GetAvailableRooms(DateTime arrival, DateTime departure)
@@ -85,17 +56,11 @@ namespace HotelManagement.Services
                 .Distinct()
                 .ToList();
 
-            return _dbContext.Rooms
+            var availableRooms = _dbContext.Rooms
                 .Where(r => !occupiedRooms.Contains(r.Id))
-                .Select(r => new RoomDTO
-                {
-                    Id = r.Id,
-                    RoomNumber = r.RoomNumber,
-                    Type = r.Type.ToString(),
-                    PricePerNight= r.PricePerNight,
-                    ExtraBedCapacity = r.ExtraBedCapacity,
-                })
                 .ToList();
+
+            return _mapper.Map<List<RoomDTO>>(availableRooms);
         }
 
         public bool UpdateRoom(RoomDTO roomDto)
@@ -105,12 +70,7 @@ namespace HotelManagement.Services
             if (room == null)
                 return false;
 
-            room.RoomNumber = roomDto.RoomNumber;
-            room.PricePerNight = roomDto.PricePerNight;
-            room.ExtraBedCapacity = roomDto.ExtraBedCapacity;
-
-            if (Enum.TryParse<RoomType>(roomDto.Type, out var roomType))
-                room.Type = roomType;
+            _mapper.Map(roomDto, room);
 
             _dbContext.SaveChanges();
 
@@ -139,19 +99,14 @@ namespace HotelManagement.Services
 
         public decimal GetRoomPrice(int roomId)
         {
-            var room = _dbContext.Rooms.Find(roomId);
-
-            return room?.PricePerNight ?? 0;
+            return _dbContext.Rooms.Find(roomId)?.PricePerNight ?? 0;
         }
 
         public bool GetExtraBedCapacity(int roomId, int count)
         {
             var room = _dbContext.Rooms.Find(roomId);
 
-            if (room == null) 
-                return false;
-
-            return room.ExtraBedCapacity >= count;
+            return room != null && room.ExtraBedCapacity >= count;
         }
 
         public bool IsRoomNumberUnique(int roomNumber)
