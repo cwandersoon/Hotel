@@ -1,9 +1,13 @@
 ﻿using Autofac;
 using AutoMapper;
+using FluentValidation;
+using HotelManagement.Controllers;
 using HotelManagement.Data;
+using HotelManagement.DTOs;
 using HotelManagement.Interfaces;
 using HotelManagement.Mappings;
 using HotelManagement.Services;
+using HotelManagement.Validators;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using System;
@@ -22,6 +26,8 @@ namespace HotelManagement.Modules
 
             builder.RegisterType<DataInitializer>().AsSelf();
             builder.RegisterType<RoomService>().As<IRoomService>().InstancePerLifetimeScope();
+            builder.RegisterType<RoomController>().AsSelf();
+            builder.RegisterType<RoomDTOValidator>().As<IValidator<RoomDTO>>();
             builder.RegisterType<Application>().AsSelf();
 
             builder.RegisterInstance(new MapperConfiguration(cfg =>

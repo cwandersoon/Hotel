@@ -15,9 +15,6 @@ namespace HotelManagement.Interfaces
         bool UpdateRoom(RoomDTO roomDto);
         bool DeleteRoom(int roomId);
 
-
-        decimal GetRoomPrice(int roomId);
-        bool GetExtraBedCapacity(int roomId, int count);
         bool IsRoomNumberUnique(int roomNumber);
     }
 }

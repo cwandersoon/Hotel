@@ -97,18 +97,6 @@ namespace HotelManagement.Services
             return true;
         }
 
-        public decimal GetRoomPrice(int roomId)
-        {
-            return _dbContext.Rooms.Find(roomId)?.PricePerNight ?? 0;
-        }
-
-        public bool GetExtraBedCapacity(int roomId, int count)
-        {
-            var room = _dbContext.Rooms.Find(roomId);
-
-            return room != null && room.ExtraBedCapacity >= count;
-        }
-
         public bool IsRoomNumberUnique(int roomNumber)
         {
             return !_dbContext.Rooms.Any(r => r.RoomNumber == roomNumber);

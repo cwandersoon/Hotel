@@ -36,7 +36,7 @@ namespace HotelManagement.Data
 
                 var customers = customerFaker.Generate(25);
                 dbContext.Customers.AddRange(customers);
-                Console.WriteLine("25 kunder genererade.");
+                Console.WriteLine("25 customers generated.");
             }
         }
 
@@ -80,7 +80,7 @@ namespace HotelManagement.Data
                 }
 
                 dbContext.Rooms.AddRange(rooms);
-                Console.WriteLine("15 rum har skapats.");
+                Console.WriteLine("15 rooms created.");
             }
         }
 
@@ -112,7 +112,7 @@ namespace HotelManagement.Data
                 }
 
                 dbContext.Bookings.AddRange(bookings);
-                Console.WriteLine("10 bokningar har skapats!");
+                Console.WriteLine("10 bookings created.");
             }
         }
 
