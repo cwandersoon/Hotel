@@ -14,8 +14,6 @@ namespace HotelManagement.Interfaces
         bool UpdateCustomer(CustomerDTO customerDto);
         bool DeleteCustomer(int customerId);
 
-
         bool IsEmailUnique(string email);
-        bool CanDeleteCustomer(int id);
     }
 }

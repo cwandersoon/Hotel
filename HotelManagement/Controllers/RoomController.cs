@@ -1,6 +1,7 @@
 ﻿using FluentValidation;
 using HotelManagement.DTOs;
 using HotelManagement.Interfaces;
+using HotelManagement.Models;
 using Spectre.Console;
 using System;
 using System.Collections.Generic;
@@ -19,11 +20,9 @@ namespace HotelManagement.Controllers
             _validator = validator;
         }
 
-        public void RunRoomMenu()
+        public void RoomMenu()
         {
-            bool backToMain = false;
-
-            while (!backToMain)
+            while (true)
             {
                 AnsiConsole.Clear();
 
@@ -51,7 +50,7 @@ namespace HotelManagement.Controllers
                         ShowAvailableRooms();
                         break;
                     case "Find Room by Number":
-                        FindRoom();
+                        SearchRoom();
                         break;
                     case "Add New Room":
                         AddNewRoom();
@@ -63,8 +62,7 @@ namespace HotelManagement.Controllers
                         DeleteRoom();
                         break;
                     case "[red]Back to Main Menu[/]":
-                        backToMain = true;
-                        break;
+                        return;
                 }
                 AnsiConsole.MarkupLine("\n[grey]Press any key to return to menu...[/]");
                 Console.ReadKey(true);
@@ -72,37 +70,31 @@ namespace HotelManagement.Controllers
         }
         public void AddNewRoom()
         {
-            var roomNumber = AnsiConsole.Ask<int>("Enter [blue]room number[/]:");
-            var price = AnsiConsole.Ask<decimal>("Enter [blue]price per night[/]:");
-            var extraBeds = AnsiConsole.Ask<int>("Enter [blue]extra beds[/]:");
+            var roomDto = new RoomDTO();
 
-            var type = AnsiConsole.Prompt(
+            AnsiConsole.MarkupLine("[yellow]Enter Room details:[/]");
+            roomDto.RoomNumber = AnsiConsole.Ask<int>("Enter [blue]room number[/]:");
+            roomDto.PricePerNight = AnsiConsole.Ask<decimal>("Enter [blue]price per night[/]:");
+            roomDto.ExtraBedCapacity = AnsiConsole.Ask<int>("Enter [blue]extra beds[/]:");
+            roomDto.Type = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
                     .Title("Select [blue]room type[/]:")
                     .AddChoices(new[] { "Single", "Double", "Suite" }));
 
-            var newRoom = new RoomDTO
-            {
-                RoomNumber = roomNumber,
-                PricePerNight = price,
-                Type = type,
-                ExtraBedCapacity = extraBeds
-            };
+            var validationResult = _validator.Validate(roomDto);
 
-            var results = _validator.Validate(newRoom);
-
-            if (!results.IsValid)
+            if (!validationResult.IsValid)
             {
                 AnsiConsole.MarkupLine("[red]Validation failed:[/]");
-                foreach (var error in results.Errors)
+                foreach (var error in validationResult.Errors)
                 {
-                    AnsiConsole.MarkupLine($"- [yellow]{error.ErrorMessage}[/]");
+                    AnsiConsole.MarkupLine($"[red]{error.ErrorMessage}[/]");
                 }
                 return;
             }
 
-            _roomService.AddRoom(newRoom);
-            AnsiConsole.MarkupLine("\n[bold green]Room added successfully![/]");
+            _roomService.AddRoom(roomDto);
+            AnsiConsole.MarkupLine("\n[green]Room added successfully![/]");
         }
 
         public void DisplayAllRooms()
@@ -169,7 +161,7 @@ namespace HotelManagement.Controllers
             AnsiConsole.Write(table);
         }
 
-        private void FindRoom()
+        private void SearchRoom()
         {
             var number = AnsiConsole.Ask<int>("Enter [blue]Room Number[/] to search for:");
 
@@ -181,17 +173,21 @@ namespace HotelManagement.Controllers
                 return;
             }
 
-            var panel = new Panel(
-                $"Number: {room.RoomNumber}" +
-                $"\nType: {room.Type}" +
-                $"\nPrice: {room.PricePerNight:C}" +
-                $"\nExtra beds: {room.ExtraBedCapacity}")
-            {
-                Header = new PanelHeader("Room Details"),
-                Border = BoxBorder.Rounded
-            };
+            var table = new Table()
+                .Title($"[bold yellow]Result for Room {number}[/]");
+            table.AddColumn("Room Number");
+            table.AddColumn("Type");
+            table.AddColumn("Price");
+            table.AddColumn("Extra beds");
 
-            AnsiConsole.Write(panel);
+            table.AddRow(
+                room.RoomNumber.ToString(),
+                room.Type,
+                $"{room.PricePerNight:C}",
+                room.ExtraBedCapacity.ToString()
+            );
+
+            AnsiConsole.Write(table);
         }
 
         public void UpdateRoom()

@@ -15,8 +15,8 @@ namespace HotelManagement.Validators
             _roomService = roomService;
 
             RuleFor(r => r.RoomNumber)
-                .InclusiveBetween(0, 1000)
-                .WithMessage("Room number must be between 0 and 1000.");
+                .InclusiveBetween(1, 1000)
+                .WithMessage("Room number must be between 1 and 1000.");
 
             RuleFor(r => r.RoomNumber)
                 .Must((dto, num) =>
@@ -26,13 +26,14 @@ namespace HotelManagement.Validators
 
                     var existingRoom = _roomService.GetRoomById(dto.Id);
 
-                    return _roomService.IsRoomNumberUnique(num) || (existingRoom != null && existingRoom.RoomNumber == num);
+                    return _roomService.IsRoomNumberUnique(num) ||
+                        (existingRoom != null && existingRoom.RoomNumber == num);
                 })
                 .WithMessage("Room number already exists.");
 
             RuleFor(r => r.PricePerNight)
-                .InclusiveBetween(100, 10000)
-                .WithMessage("Price must be between 100 and 10,000 SEK.");
+                .InclusiveBetween(100, 999999)
+                .WithMessage("Price must be between 100 and 999,999 SEK.");
 
             RuleFor(r => r.Type)
                 .NotEmpty()
