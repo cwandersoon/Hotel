@@ -65,7 +65,7 @@ namespace HotelManagement.Controllers
             }
         }
 
-        private void AddCustomer()
+        public CustomerDTO? AddCustomer()
         {
             var customerDto = new CustomerDTO();
 
@@ -86,11 +86,14 @@ namespace HotelManagement.Controllers
                 {
                     AnsiConsole.MarkupLine($"[red]{error.ErrorMessage}[/]");
                 }
-                return;
+                return null;
             }
 
-            _customerService.AddCustomer(customerDto);
+            int newId = _customerService.AddCustomer(customerDto);
+            customerDto.Id = newId;
+
             AnsiConsole.MarkupLine("[green]Customer added successfully![/]");
+            return customerDto;
         }
 
         private void ListAllCustomers()
@@ -164,7 +167,7 @@ namespace HotelManagement.Controllers
             AnsiConsole.Write(table);
         }
 
-        public void UpdateCustomer()
+        private void UpdateCustomer()
         {
             var allCustomers = _customerService.GetAllCustomers();
 
@@ -176,8 +179,9 @@ namespace HotelManagement.Controllers
 
             var selectedCustomer = AnsiConsole.Prompt(
                 new SelectionPrompt<CustomerDTO>()
-                    .Title("Select a [blue]customer[/] to update:")
+                    .Title("Select a [blue]customer[/] to update (type to [blue]search[/]):")
                     .PageSize(10)
+                    .EnableSearch()
                     .UseConverter(c => $"{c.FullName} ({c.Email})")
                     .AddChoices(allCustomers));
 
@@ -214,31 +218,39 @@ namespace HotelManagement.Controllers
             if (_customerService.UpdateCustomer(customerToUpdate))
                 AnsiConsole.MarkupLine("\n[green]Customer updated successfully![/]");
             else
-                AnsiConsole.MarkupLine("\n[red]Failed to update customer in database.[/]");
+                AnsiConsole.MarkupLine("\n[red]Failed to update customer.[/]");
         }
 
         private void DeleteCustomer()
         {
-            var id = AnsiConsole.Ask<int>("Enter [red]ID[/] of the customer to delete:");
+            var customers = _customerService.GetAllCustomers();
 
-            var customer = _customerService.GetCustomerById(id);
-            if (customer == null)
+            if (!customers.Any())
             {
-                AnsiConsole.MarkupLine("[red]Customer not found.[/]");
+                AnsiConsole.MarkupLine("[red]No customers found to delete.[/]");
                 return;
             }
 
-            if (AnsiConsole.Confirm($"Are you sure you want to delete [yellow]{customer.FullName}[/]?"))
+            var selectedCustomer = AnsiConsole.Prompt(
+                new SelectionPrompt<CustomerDTO>()
+                    .Title("Select a [blue]customer to delete[/] (type to [blue]search[/]):")
+                    .PageSize(10)
+                    .EnableSearch()
+                    .UseConverter(c => $"{c.FullName} ({c.Email})")
+                    .AddChoices(customers));
+
+            AnsiConsole.MarkupLine($"[yellow]Warning:[/] You are about to delete [blue]{selectedCustomer.FullName}[/].");
+
+            if (AnsiConsole.Confirm($"Are you sure you want to delete this customer?"))
             {
-                var success = _customerService.DeleteCustomer(id);
-                if (success)
-                    AnsiConsole.MarkupLine("[green]Customer deleted.[/]");
+                if (_customerService.DeleteCustomer(selectedCustomer.Id))
+                    AnsiConsole.MarkupLine("[green]Customer deleted successfully.[/]");
                 else
-                    AnsiConsole.MarkupLine("[red]Could not delete customer. Check if they have active bookings.[/]");
+                {
+                    AnsiConsole.MarkupLine("[red]Could not delete customer.[/]");
+                }
             }
         }
-
-        
     }
 }
     

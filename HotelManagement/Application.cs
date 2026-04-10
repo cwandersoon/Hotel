@@ -18,13 +18,20 @@ namespace HotelManagement
         private readonly DataInitializer _dataInitializer;
         private readonly RoomController _roomController;
         private readonly CustomerController _customerController;
+        private readonly BookingController _bookingController;
 
-        public Application(ApplicationDbContext dbContext, DataInitializer dataInitializer, RoomController roomController, CustomerController customerController)
+        public Application(
+            ApplicationDbContext dbContext,
+            DataInitializer dataInitializer,
+            RoomController roomController,
+            CustomerController customerController,
+            BookingController bookingController)
         {
             _dbContext = dbContext;
             _dataInitializer = dataInitializer;
             _roomController = roomController;
             _customerController = customerController;
+            _bookingController = bookingController;
         }
 
         public void Run()
@@ -54,12 +61,11 @@ namespace HotelManagement
                         break;
 
                     case "Manage Bookings":
-                        AnsiConsole.MarkupLine("[yellow]Booking management is coming soon![/]");
-                        Console.ReadKey(true);
+                        _bookingController.BookingMenu();
                         break;
 
                     case "Exit":
-                        AnsiConsole.MarkupLine("[bold red]Shutting down... Goodbye![/]");
+                        AnsiConsole.MarkupLine("[red]Exiting![/]");
                         return;
                 }
             }

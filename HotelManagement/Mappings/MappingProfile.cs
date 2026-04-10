@@ -11,19 +11,19 @@ namespace HotelManagement.Mappings
     {
         public MappingProfile()
         {
+            CreateMap<Customer, CustomerDTO>().ReverseMap();
+            CreateMap<Room, RoomDTO>().ReverseMap();
 
-            //CreateMap<Booking, BookingDTO>();
-            //CreateMap<BookingDTO, Booking>();
+            CreateMap<Booking, BookingDTO>()
+            .ForMember(dest => dest.CustomerName,
+                opt => opt.MapFrom(src => $"{src.Customer.FirstName} {src.Customer.LastName}"))
+            .ForMember(dest => dest.RoomNumber,
+                opt => opt.MapFrom(src => src.Room.RoomNumber));
 
-            CreateMap<Customer, CustomerDTO>();
-            CreateMap<CustomerDTO, Customer>();
-
-            //CreateMap<Invoice, InvoiceDTO>();
-            //CreateMap<InvoiceDTO, Invoice>();
-
-            CreateMap<Room, RoomDTO>();
-            CreateMap<RoomDTO, Room>();
-
+            CreateMap<BookingDTO, Booking>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.Customer, opt => opt.Ignore())
+            .ForMember(dest => dest.Room, opt => opt.Ignore());
         }
     }
 }

@@ -24,13 +24,19 @@ namespace HotelManagement.Modules
                 .CreateDbContext(Array.Empty<string>()))
                 .AsSelf().InstancePerLifetimeScope();
 
-            builder.RegisterType<DataInitializer>().AsSelf();
             builder.RegisterType<RoomService>().As<IRoomService>().InstancePerLifetimeScope();
             builder.RegisterType<RoomController>().AsSelf();
             builder.RegisterType<RoomDTOValidator>().As<IValidator<RoomDTO>>().InstancePerLifetimeScope();
+
             builder.RegisterType<CustomerService>().As<ICustomerService>().InstancePerLifetimeScope();
             builder.RegisterType<CustomerController>().AsSelf();
             builder.RegisterType<CustomerDTOValidator>().As<IValidator<CustomerDTO>>().InstancePerLifetimeScope();
+           
+            builder.RegisterType<BookingService>().As<IBookingService>().InstancePerLifetimeScope();
+            builder.RegisterType<BookingController>().AsSelf();
+            builder.RegisterType<BookingDTOValidator>().As<IValidator<BookingDTO>>().InstancePerLifetimeScope();
+
+            builder.RegisterType<DataInitializer>().AsSelf();
             builder.RegisterType<Application>().AsSelf();
 
             builder.RegisterInstance(new MapperConfiguration(cfg =>

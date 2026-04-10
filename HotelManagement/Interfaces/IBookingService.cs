@@ -16,7 +16,7 @@ namespace HotelManagement.Interfaces
 
 
         decimal CalculateTotalPrice(int roomId, DateTime arrival, DateTime departure, int extrabeds);
-        bool IsRoomAvailable(int roomId, DateTime arrival, DateTime departure);
+        bool IsRoomAvailable(int roomId, DateTime arrival, DateTime departure, int? currentBookingId = null);
         bool CheckExtaBedCapacity(int roomId, int requstedExtraBeds);
         bool ValidateBookingDates(DateTime arrival, DateTime departure);
 

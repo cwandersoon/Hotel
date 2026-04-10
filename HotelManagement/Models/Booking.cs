@@ -17,6 +17,7 @@ namespace HotelManagement.Models
         public int RoomId { get; set; }
         public Room Room { get; set; } = null!;
         public Invoice? Invoice { get; set; }
+        public decimal TotalPrice { get; set; }
         public bool IsDeleted { get; set; } = false;
     }
 }

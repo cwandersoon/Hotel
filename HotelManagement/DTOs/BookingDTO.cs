@@ -9,7 +9,9 @@ namespace HotelManagement.DTOs
     public class BookingDTO
     {
         public int Id { get; set; }
+        public int CustomerId { get; set; }
         public string CustomerName { get; set; } = string.Empty;
+        public int RoomId { get; set; }
         public int RoomNumber { get; set; }
         public DateTime ArrivalDate { get; set; }
         public DateTime DepartureDate { get; set; }

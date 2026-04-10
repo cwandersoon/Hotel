@@ -124,14 +124,19 @@ namespace HotelManagement.Controllers
 
         public void ShowAvailableRooms()
         {
-            //Ändra till kalender?
             var arrival = AnsiConsole.Prompt(
                     new TextPrompt<DateTime>("Arrival date (yyyy-mm-dd):")
-                        .Validate(date => date >= DateTime.Today ? ValidationResult.Success() : ValidationResult.Error("[red]Arrival must be today or later[/]")));
+                        .Validate(date =>
+                        date >= DateTime.Today
+                        ? ValidationResult.Success()
+                        : ValidationResult.Error("[red]Arrival must be today or later[/]")));
 
             var departure = AnsiConsole.Prompt(
                 new TextPrompt<DateTime>("Departure date (yyyy-mm-dd):")
-                    .Validate(date => date > arrival ? ValidationResult.Success() : ValidationResult.Error("[red]Departure must be after arrival[/]")));
+                    .Validate(date =>
+                    date > arrival
+                    ? ValidationResult.Success()
+                    : ValidationResult.Error("[red]Departure must be after arrival[/]")));
 
             var availableRooms = _roomService.GetAvailableRooms(arrival, departure);
 
@@ -258,7 +263,7 @@ namespace HotelManagement.Controllers
 
             if (!rooms.Any())
             {
-                AnsiConsole.MarkupLine("[yellow]No rooms to delete.[/]");
+                AnsiConsole.MarkupLine("[red]No rooms to delete.[/]");
                 return;
             }
 
