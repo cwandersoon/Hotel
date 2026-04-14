@@ -36,6 +36,10 @@ namespace HotelManagement.Modules
             builder.RegisterType<BookingController>().AsSelf();
             builder.RegisterType<BookingDTOValidator>().As<IValidator<BookingDTO>>().InstancePerLifetimeScope();
 
+            builder.RegisterType<InvoiceService>().As<IInvoiceService>().InstancePerLifetimeScope();
+            builder.RegisterType<InvoiceController>().AsSelf();
+            builder.RegisterType<InvoiceDTOValidator>().As<IValidator<InvoiceDTO>>().InstancePerLifetimeScope();
+
             builder.RegisterType<DataInitializer>().AsSelf();
             builder.RegisterType<Application>().AsSelf();
 
@@ -47,7 +51,5 @@ namespace HotelManagement.Modules
             builder.Register(c => c.Resolve<MapperConfiguration>().CreateMapper(c.Resolve))
                .As<IMapper>().InstancePerLifetimeScope();
         }
-    
-
     }
 }

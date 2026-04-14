@@ -11,11 +11,12 @@ namespace HotelManagement.DTOs
     {
         public int Id { get; set; }
         public string CustomerName { get; set; } = string.Empty;
+        public int RoomNumber { get; set; }
         public decimal TotalAmount { get; set; }
+        public DateTime IssueDate { get; set; }
         public DateTime DueDate { get; set; }
         public bool IsPaid { get; set; }
         public int BookingId { get; set; }
-
-        public string Status => IsPaid ? "Betald" : "Obetald";
+        public string Status => IsPaid ? "Paid" : "Unpaid";
     }
 }
