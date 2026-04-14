@@ -6,6 +6,7 @@ using HotelManagement.Data;
 using HotelManagement.DTOs;
 using HotelManagement.Interfaces;
 using HotelManagement.Models;
+using Microsoft.EntityFrameworkCore;
 
 
 namespace HotelManagement.Services
@@ -31,11 +32,22 @@ namespace HotelManagement.Services
 
         public List<CustomerDTO> GetAllCustomers()
         {
-            var customers = _dbContext.Customers.ToList();
-            return _mapper.Map<List<CustomerDTO>>(customers);
+            var customers = _dbContext.Customers
+                .Include(c => c.Bookings)
+                .ToList();
+
+            var customerDtos = _mapper.Map<List<CustomerDTO>>(customers);
+
+            foreach (var customerDto in customerDtos)
+            {
+                var customer = customers.First(c => c.Id == customerDto.Id);
+                customerDto.HasActiveBookings = customer.Bookings.Any(b => b.DepartureDate >= DateTime.Today);
+            }
+
+            return customerDtos;
         }
 
-        public CustomerDTO? GetCustomerById(int customerId)
+        public CustomerDTO GetCustomerById(int customerId)
         {
             var customer = _dbContext.Customers.Find(customerId);
             return _mapper.Map<CustomerDTO>(customer);
@@ -43,9 +55,15 @@ namespace HotelManagement.Services
 
         public List<CustomerDTO> SearchCustomer(string name)
         {
+            if (string.IsNullOrWhiteSpace(name))
+                return new List<CustomerDTO>();
+
+            var searchTerm = name.Trim().ToLower();
+
             var customers = _dbContext.Customers
-                .Where(c => c.FirstName.Contains(name) || c.LastName.Contains(name))
+                .Where(c => (c.FirstName + " " + c.LastName).ToLower().Contains(searchTerm))
                 .ToList();
+
             return _mapper.Map<List<CustomerDTO>>(customers);
         }
 
@@ -69,10 +87,10 @@ namespace HotelManagement.Services
             if (customer == null)
                 return false;
 
-            var hasFutureBookings = _dbContext.Bookings
-                .Any(b => b.CustomerId == customerId && b.ArrivalDate >= DateTime.Today);
+            var hasAnyBookings = _dbContext.Bookings
+                .Any(b => b.CustomerId == customerId);
 
-            if (hasFutureBookings)
+            if (hasAnyBookings)
                 return false;
 
             customer.IsDeleted = true;

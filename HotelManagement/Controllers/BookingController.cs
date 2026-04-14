@@ -1,6 +1,9 @@
-﻿using FluentValidation;
+﻿using Bogus.DataSets;
+using FluentValidation;
 using HotelManagement.DTOs;
 using HotelManagement.Interfaces;
+using HotelManagement.Models;
+using HotelManagement.UI;
 using Spectre.Console;
 using System;
 using System.Collections.Generic;
@@ -34,19 +37,7 @@ namespace HotelManagement.Controllers
         {
             while (true)
             {
-                AnsiConsole.Clear();
-
-                var choice = AnsiConsole.Prompt(
-                    new SelectionPrompt<string>()
-                        .Title("[yellow]Booking Management[/]")
-                        .AddChoices(new[] {
-                            "List All Bookings",
-                            "List Bookings by Customer",
-                            "Add New Booking",
-                            "Update Booking",
-                            "Delete Booking",
-                            "Back to Main Menu"
-                        }));
+                var choice = MenuUI.ShowBookingMenu();
 
                 switch (choice)
                 {
@@ -55,6 +46,12 @@ namespace HotelManagement.Controllers
                         break;
                     case "List Bookings by Customer":
                         ListBookingsByCustomer();
+                        break;
+                    case "Check In Guest":
+                        CheckInGuest();
+                        break;
+                    case "Check Out Guest":
+                        CheckOutGuest();
                         break;
                     case "Add New Booking":
                         AddBooking();
@@ -78,6 +75,7 @@ namespace HotelManagement.Controllers
         {
             CustomerDTO? selectedCustomer = null;
 
+            AnsiConsole.MarkupLine("[bold yellow]Enter Booking details:[/]");
             var customerAction = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
                     .Title("Customer Options:")
@@ -89,6 +87,7 @@ namespace HotelManagement.Controllers
             if (customerAction == "Create New Customer")
             {
                 selectedCustomer = _customerController.AddCustomer();
+
                 if (selectedCustomer == null)
                     return;
             }
@@ -102,16 +101,25 @@ namespace HotelManagement.Controllers
                     return;
                 }
 
-                selectedCustomer = AnsiConsole.Prompt(
-                    new SelectionPrompt<CustomerDTO>()
-                        .Title("Select [blue]Customer[/]:")
-                        .EnableSearch()
-                        .UseConverter(c => $"{c.FullName} ({c.Email})")
-                        .AddChoices(customers));
+                TableUI.ShowCustomersTable(customers, "Select Customer");
+
+                var customerId = AnsiConsole.Ask<int>("Enter Customer [blue]ID[/]");
+
+                if (customerId == 0)
+                    return;
+
+                selectedCustomer = customers.FirstOrDefault(c => c.Id == customerId);
+
+                if (selectedCustomer == null)
+                {
+                    AnsiConsole.MarkupLine("[red]Customer not found.[/]");
+                    return;
+                }
             }
 
             var arrival = AnsiConsole.Prompt(
                     new TextPrompt<DateTime>("Arrival date (yyyy-mm-dd):")
+                        .DefaultValue(DateTime.Today)
                         .Validate(date =>
                         date >= DateTime.Today
                         ? ValidationResult.Success()
@@ -119,12 +127,15 @@ namespace HotelManagement.Controllers
 
             var departure = AnsiConsole.Prompt(
                 new TextPrompt<DateTime>("Departure date (yyyy-mm-dd):")
+                    .DefaultValue(DateTime.Today.AddDays(1))
                     .Validate(date =>
                     date > arrival
                     ? ValidationResult.Success()
                     : ValidationResult.Error("[red]Departure must be after arrival[/]")));
 
-            var availableRooms = _roomService.GetAvailableRooms(arrival, departure);
+            var numberOfPeople = AnsiConsole.Ask<int>("Number of people for the booking?");
+
+            var availableRooms = _roomService.GetAvailableRooms(arrival, departure, numberOfPeople);
 
             if (!availableRooms.Any())
             {
@@ -132,17 +143,27 @@ namespace HotelManagement.Controllers
                 return;
             }
 
-            var selectedRoom = AnsiConsole.Prompt(
-                new SelectionPrompt<RoomDTO>()
-                    .Title("Select an [blue]Available Room[/]:")
-                    .UseConverter(r => $"Room {r.RoomNumber} ({r.Type}) - {r.PricePerNight:C}/night")
-                    .AddChoices(availableRooms));
+            TableUI.ShowRoomsTable(availableRooms, $"Available Rooms ({arrival:yyyy-MM-dd} to {departure:yyyy-MM-dd})");
 
-            var extraBeds = AnsiConsole.Ask<int>("Number of [blue]extra beds[/]?");
+            var roomId = AnsiConsole.Ask<int>("Enter Room [blue]ID[/] to book:");
+
+            if (roomId == 0)
+                return;
+
+            var selectedRoom = availableRooms.FirstOrDefault(r => r.Id == roomId);
+
+            if (selectedRoom == null)
+            {
+                AnsiConsole.MarkupLine("[red]Invalid Room ID.[/]");
+                return;
+            }
+
+            int bedsInRoom = selectedRoom.Type == RoomType.Single ? 1 : 2;
+            int extraBeds = Math.Max(0, numberOfPeople - bedsInRoom);
 
             var bookingDto = new BookingDTO
             {
-                CustomerId = selectedCustomer.Id,
+                CustomerId = selectedCustomer!.Id,
                 RoomId = selectedRoom.Id,
                 ArrivalDate = arrival,
                 DepartureDate = departure,
@@ -150,16 +171,10 @@ namespace HotelManagement.Controllers
                 TotalPrice = _bookingService.CalculateTotalPrice(selectedRoom.Id, arrival, departure, extraBeds)
             };
 
-            var validationResult = _validator.Validate(bookingDto);
-
-            if (!validationResult.IsValid)
-            {
-                foreach (var error in validationResult.Errors)
-                    AnsiConsole.MarkupLine($"[red]{error.ErrorMessage}[/]");
+            if (_validator.IsInvalid(bookingDto))
                 return;
-            }
 
-            if (AnsiConsole.Confirm($"Total price will be [blue]{bookingDto.TotalPrice:C}[/]. Confirm booking?"))
+            if (AnsiConsole.Confirm($"Confirm booking?"))
             {
                 _bookingService.AddBooking(bookingDto);
                 AnsiConsole.MarkupLine("[green]Booking created successfully![/]");
@@ -180,26 +195,7 @@ namespace HotelManagement.Controllers
                 return;
             }
 
-            var table = new Table();
-            table.AddColumn("ID");
-            table.AddColumn("Customer");
-            table.AddColumn("Room number");
-            table.AddColumn("Dates");
-            table.AddColumn("Extra beds");
-            table.AddColumn("Total price");
-
-            foreach (var b in bookings)
-            {
-                table.AddRow(
-                    b.Id.ToString(),
-                    b.CustomerName,
-                    b.RoomNumber.ToString(),
-                    $"{b.ArrivalDate:yyyy-MM-dd} to {b.DepartureDate:yyyy-MM-dd}",
-                    b.ExtraBedsOrdered.ToString(),
-                    $"{b.TotalPrice:C}"
-                );
-            }
-            AnsiConsole.Write(table);
+            TableUI.ShowBookingsTable(bookings, "All Bookings");
         }
 
         private void ListBookingsByCustomer()
@@ -212,85 +208,64 @@ namespace HotelManagement.Controllers
                 return;
             }
 
-            var selectedCustomer = AnsiConsole.Prompt(
-                new SelectionPrompt<CustomerDTO>()
-                    .Title("Select a [blue]customer[/] to see their bookings (type to [blue]search[/]):")
-                    .PageSize(15)
-                    .UseConverter(c => $"{c.FullName} ({c.Email})")
-                    .EnableSearch()
-                    .AddChoices(customers));
+            TableUI.ShowCustomersTable(customers, "Select Customer to view Bookings")
+                ;
+            var customerId = AnsiConsole.Ask<int>("Enter Customer [blue]ID[/]:");
 
-            var bookings = _bookingService.GetBookingByCustomer(selectedCustomer.Id);
+            var bookings = _bookingService.GetBookingByCustomer(customerId);
 
             if (!bookings.Any())
             {
-                AnsiConsole.MarkupLine($"[red]No bookings found for {selectedCustomer.FullName}.[/]");
+                AnsiConsole.MarkupLine($"[red]No bookings found for this customer.[/]");
                 return;
             }
 
-            var table = new Table();
-            table.AddColumn("ID");
-            table.AddColumn("Customer");
-            table.AddColumn("Room number");
-            table.AddColumn("Dates");
-            table.AddColumn("Extra beds");
-            table.AddColumn("Total price");
-
-            foreach (var b in bookings)
-            {
-                table.AddRow(
-                    b.Id.ToString(),
-                    b.CustomerName,
-                    b.RoomNumber.ToString(),
-                    $"{b.ArrivalDate:yyyy-MM-dd} to {b.DepartureDate:yyyy-MM-dd}",
-                    b.ExtraBedsOrdered.ToString(),
-                    $"{b.TotalPrice:C}"
-                );
-            }
-            AnsiConsole.Write(table);
+            TableUI.ShowBookingsTable(bookings, $"Bookings for Customer ID {customerId}");
         }
         private void UpdateBooking()
         {
             var bookings = _bookingService.GetAllBookings();
 
             if (!bookings.Any())
+            {
+                AnsiConsole.MarkupLine("[red]No bookings available to update.[/]");
+                return;
+            }
+
+            TableUI.ShowBookingsTable(bookings, "Select Booking to Update");
+
+            var bookingId = AnsiConsole.Ask<int>("Enter Booking [blue]ID[/] to Update:");
+
+            var selectedBooking = bookings.FirstOrDefault(b => b.Id == bookingId);
+
+            if (selectedBooking == null)
                 return;
 
-            var selectedBooking = AnsiConsole.Prompt(
-                new SelectionPrompt<BookingDTO>()
-                    .Title("Select [blue]booking to update[/] (type to [blue]search[/]):")
-                    .PageSize(10)
-                    .EnableSearch()
-                    .UseConverter(b => $"#{b.Id}: {b.CustomerName} (Room {b.RoomNumber})")
-                    .AddChoices(bookings));
-
             var arrival = AnsiConsole.Prompt(
-                new TextPrompt<DateTime>("New Arrival date:")
+                new TextPrompt<DateTime>("Enter new [blue]Arrival date[/]:")
                     .DefaultValue(selectedBooking.ArrivalDate)
                     .Validate(date => date >= DateTime.Today ? ValidationResult.Success() : ValidationResult.Error("[red]Arrival must be today or later[/]")));
 
             var departure = AnsiConsole.Prompt(
-                new TextPrompt<DateTime>("New Departure date:")
+                new TextPrompt<DateTime>("Enter new [blue]Departure date[/]:")
                     .DefaultValue(selectedBooking.DepartureDate)
                     .Validate(date => date > arrival ? ValidationResult.Success() : ValidationResult.Error("[red]Departure must be after arrival[/]")));
 
-            var availableRooms = _roomService.GetAvailableRooms(arrival, departure);
+            var numberOfPeople = AnsiConsole.Ask<int>("Number of people for the booking?");
 
-            if (!availableRooms.Any(r => r.Id == selectedBooking.RoomId))
-            {
-                var currentRoom = _roomService.GetRoomById(selectedBooking.RoomId);
-                availableRooms.Add(currentRoom);
-            }
+            var availableRooms = _roomService.GetAvailableRooms(arrival, departure, numberOfPeople, selectedBooking.Id);
 
-            var selectedRoom = AnsiConsole.Prompt(
-                new SelectionPrompt<RoomDTO>()
-                    .Title("Select [blue]Room[/]:")
-                    .UseConverter(r => $"Room {r.RoomNumber} ({r.Type})")
-                    .AddChoices(availableRooms));
+            TableUI.ShowRoomsTable(availableRooms, "Select New Room");
 
-            var extraBeds = AnsiConsole.Prompt(
-                new TextPrompt<int>("Number of [blue]extra beds[/]?")
-                    .DefaultValue(selectedBooking.ExtraBedsOrdered));
+            var roomId = AnsiConsole.Ask<int>("Enter Room [blue]ID[/]:");
+
+            var selectedRoom = availableRooms.FirstOrDefault(r => r.Id == roomId);
+
+            if (selectedRoom == null)
+                return;
+
+            int bedsInRoom = selectedRoom.Type == RoomType.Single ? 1 : 2;
+            int extraBeds = Math.Max(0, numberOfPeople - bedsInRoom);
 
             selectedBooking.ArrivalDate = arrival;
             selectedBooking.DepartureDate = departure;
@@ -298,27 +273,15 @@ namespace HotelManagement.Controllers
             selectedBooking.ExtraBedsOrdered = extraBeds;
             selectedBooking.TotalPrice = _bookingService.CalculateTotalPrice(selectedRoom.Id, arrival, departure, extraBeds);
 
-            var validationResult = _validator.Validate(selectedBooking);
-
-            if (!validationResult.IsValid)
-            {
-                foreach (var error in validationResult.Errors)
-                {
-                    AnsiConsole.MarkupLine($"[red]{error.ErrorMessage}[/]");
-                }
+            if (_validator.IsInvalid(selectedBooking))
                 return;
-            }
 
-            if (AnsiConsole.Confirm($"New total price: [blue]{selectedBooking.TotalPrice:C}[/]. Confirm update?"))
+            if (AnsiConsole.Confirm("Confirm update?"))
             {
                 if (_bookingService.UpdateBooking(selectedBooking))
                     AnsiConsole.MarkupLine("[green]Booking updated successfully![/]");
                 else
                     AnsiConsole.MarkupLine("\n[red]Failed to update bookingt.[/]");
-            }
-            else
-            {
-                AnsiConsole.MarkupLine("[yellow]Update cancelled.[/]");
             }
         }
 
@@ -333,24 +296,57 @@ namespace HotelManagement.Controllers
                 return;
             }
 
-            var bookingToDelete = AnsiConsole.Prompt(
-                new SelectionPrompt<BookingDTO>()
-                    .Title("Select a [blue]booking to delete[/] (type to [blue]search[/]):")
-                    .PageSize(10)
-                    .EnableSearch()
-                    .UseConverter(b => $"#{b.Id}: {b.CustomerName} - Room {b.RoomNumber} ({b.ArrivalDate:yyyy-MM-dd})")
-                    .AddChoices(bookings));
+            TableUI.ShowBookingsTable(bookings, "Select Booking to Delete");
 
-            AnsiConsole.MarkupLine($"[yellow]You are about to cancel the booking for:[/] [blue]{bookingToDelete.CustomerName}[/]");
+            var bookingId = AnsiConsole.Ask<int>("Enter Booking [blue]ID[/] to Delete:");
+
+            var bookingToDelete = bookings.FirstOrDefault(b => b.Id == bookingId);
+
+            if (bookingToDelete == null)
+                return;
+
+            AnsiConsole.MarkupLine($"You are about to cancel the booking for: [blue]{bookingToDelete.CustomerName}[/]");
             AnsiConsole.MarkupLine($"Room {bookingToDelete.RoomNumber}, Dates: {bookingToDelete.ArrivalDate:yyyy-MM-dd} to {bookingToDelete.DepartureDate:yyyy-MM-dd}");
 
-            if (AnsiConsole.Confirm($"Are you sure you want to delete this booking?"))
+            if (AnsiConsole.Confirm("Are you sure you want to delete this booking?"))
             {
-                if (_roomService.DeleteRoom(bookingToDelete.Id))
-                    AnsiConsole.MarkupLine("\n[green]Booking successfully deleted (soft delete).[/]");
+                if (_bookingService.DeleteBooking(bookingToDelete.Id))
+                    AnsiConsole.MarkupLine("\n[green]Booking deleted successfully (soft delete).[/]");
                 else
                     AnsiConsole.MarkupLine("\n[red]Could not delete the booking[/]");
             }
+        }
+        private void CheckInGuest()
+        {
+            var bookings = _bookingService.GetAllBookings()
+                .Where(b => !b.IsCheckedIn && b.ArrivalDate.Date <= DateTime.Today)
+                .ToList();
+
+            if (!bookings.Any())
+            {
+                AnsiConsole.MarkupLine("[red]No guests to check in.[/]");
+                return;
+            }
+
+            TableUI.ShowBookingsTable(bookings, "Check-In");
+
+            var bookingId = AnsiConsole.Ask<int>("Enter Booking [blue]ID[/] to Check In:");
+
+            if (_bookingService.CheckIn(bookingId))
+                AnsiConsole.MarkupLine("[green]Guest is checked in![/]");
+        }
+        private void CheckOutGuest()
+        {
+            var bookings = _bookingService.GetAllBookings().Where(b => !b.IsCheckedOut).ToList();
+
+            TableUI.ShowBookingsTable(bookings, "Check-Out");
+
+            var bookingId = AnsiConsole.Ask<int>("Enter Booking [blue]ID[/] to Check Out:");
+
+            if (_bookingService.CheckOut(bookingId))
+                AnsiConsole.MarkupLine("[green]Guest is checked out![/]");
+            else
+                AnsiConsole.MarkupLine("[red]You cannot check out a guest that is not checked in yet![/]");
         }
     }
 }

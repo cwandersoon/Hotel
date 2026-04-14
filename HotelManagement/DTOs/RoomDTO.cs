@@ -11,7 +11,8 @@ namespace HotelManagement.DTOs
     {
         public int Id { get; set; }
         public int RoomNumber { get; set; }
-        public string Type { get; set; } = string.Empty;
+        public RoomType Type { get; set; }
+        public RoomSize Size { get; set; }
         public decimal PricePerNight { get; set; }
         public int ExtraBedCapacity { get; set; }
     }

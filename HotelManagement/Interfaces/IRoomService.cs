@@ -9,12 +9,11 @@ namespace HotelManagement.Interfaces
     {
         int AddRoom(RoomDTO roomDto);
         List<RoomDTO> GetAllRooms();
-        RoomDTO? GetRoomByNumber(int roomNumber);
-        RoomDTO? GetRoomById(int roomId);
-        List<RoomDTO> GetAvailableRooms(DateTime arrival, DateTime departure);
+        RoomDTO GetRoomByNumber(int roomNumber);
+        RoomDTO GetRoomById(int roomId);
+        List<RoomDTO> GetAvailableRooms(DateTime arrival, DateTime departure, int numberOfPeople, int? selectedBooking = null);
         bool UpdateRoom(RoomDTO roomDto);
         bool DeleteRoom(int roomId);
-
         bool IsRoomNumberUnique(int roomNumber);
     }
 }

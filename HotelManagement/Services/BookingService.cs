@@ -17,18 +17,24 @@ namespace HotelManagement.Services
     {
         private readonly ApplicationDbContext _dbContext;
         private readonly IMapper _mapper;
+        private readonly IInvoiceService _invoiceService;
 
-        public BookingService(ApplicationDbContext dbContext, IMapper mapper)
+        public BookingService(ApplicationDbContext dbContext, IMapper mapper, IInvoiceService invoiceService)
         {
             _dbContext = dbContext;
             _mapper = mapper;
+            _invoiceService = invoiceService;
         }
 
         public int AddBooking(BookingDTO bookingDto)
         {
             var booking = _mapper.Map<Booking>(bookingDto);
+            booking.CreatedAt = DateTime.Now;
             _dbContext.Bookings.Add(booking);
             _dbContext.SaveChanges();
+
+            _invoiceService.AddInvoice(booking.Id);
+
             return booking.Id;
         }
 
@@ -51,13 +57,20 @@ namespace HotelManagement.Services
             return _mapper.Map<List<BookingDTO>>(bookings);
         }
 
-        public BookingDTO? GetBookingById(int bookingId)
+        public BookingDTO GetBookingById(int bookingId)
         {
             var booking = _dbContext.Bookings
                 .Include(b => b.Customer)
                 .Include(b => b.Room)
                 .FirstOrDefault(b => b.Id == bookingId);
             return _mapper.Map<BookingDTO>(booking);
+        }
+        public List<BookingDTO> GetBookingsWithoutInvoice()
+        {
+            var bookingsWithoutInvoice = _dbContext.Bookings
+                .Where(b => !_dbContext.Invoices.Any(i => i.BookingId == b.Id))
+                .ToList();
+            return _mapper.Map<List<BookingDTO>>(bookingsWithoutInvoice);
         }
 
         public bool UpdateBooking(BookingDTO bookingDto)
@@ -87,7 +100,62 @@ namespace HotelManagement.Services
 
             return true;
         }
+        public int DeleteExpiredBookings()
+        {
+            var expiredBookings = _dbContext.Bookings
+                .Include(b => b.Invoice)
+                .Where(b => b.Invoice != null &&
+                            !b.Invoice.IsPaid &&
+                            b.CreatedAt.AddDays(10) < DateTime.Now)
+                .ToList();
 
+            foreach (var booking in expiredBookings)
+            {
+                booking.IsDeleted = true;
+
+                if (booking.Invoice != null)
+                    booking.Invoice.IsDeleted = true;
+            }
+
+            return _dbContext.SaveChanges();
+        }
+
+        public bool CheckIn(int bookingId)
+        {
+            var booking = _dbContext.Bookings.Find(bookingId);
+
+            if (booking == null || booking.IsCheckedIn)
+                return false;
+
+            if (booking.ArrivalDate.Date > DateTime.Today)
+                return false;
+
+            booking.IsCheckedIn = true;
+
+            _dbContext.SaveChanges();
+
+            return true;
+        }
+
+        public bool CheckOut(int bookingId)
+        {
+            var booking = _dbContext.Bookings.Find(bookingId);
+
+            if (booking == null)
+                return false;
+
+            if (!booking.IsCheckedIn)
+                return false;
+
+            if (booking.IsCheckedOut)
+                return false;
+
+            booking.IsCheckedOut = true;
+
+            _dbContext.SaveChanges();
+
+            return true;
+        }
 
         public decimal CalculateTotalPrice(int roomId, DateTime arrival, DateTime departure, int extrabeds)
         {

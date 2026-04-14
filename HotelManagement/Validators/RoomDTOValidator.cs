@@ -1,6 +1,7 @@
 ﻿using FluentValidation;
 using HotelManagement.DTOs;
 using HotelManagement.Interfaces;
+using HotelManagement.Models;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -35,13 +36,32 @@ namespace HotelManagement.Validators
                 .InclusiveBetween(100, 999999)
                 .WithMessage("Price must be between 100 and 999,999 SEK.");
 
+            RuleFor(r => r.Size)
+                .IsInEnum()
+                .WithMessage("A valid room size is required.");
+
             RuleFor(r => r.Type)
-                .NotEmpty()
+                .IsInEnum()
                 .WithMessage("Room type is required.");
 
             RuleFor(r => r.ExtraBedCapacity)
-                .InclusiveBetween(0, 2)
-                .WithMessage("Extra bed capacity must be between 0 and 2.");
+              .InclusiveBetween(0, 2)
+              .WithMessage("Extra bed capacity must be between 0 and 2.");
+
+            RuleFor(r => r.ExtraBedCapacity)
+                .Equal(0)
+                .When(r => r.Type == RoomType.Single)
+                .WithMessage("Single rooms cannot have extra beds.");
+
+            RuleFor(r => r.ExtraBedCapacity)
+                .Equal(1)
+                .When(r => r.Type == RoomType.Double && r.Size == RoomSize.Medium)
+                .WithMessage("Medium double rooms must have capacity for 1 extra bed.");
+
+            RuleFor(r => r.ExtraBedCapacity)
+                .Equal(2)
+                .When(r => r.Type == RoomType.Double && r.Size == RoomSize.Large)
+                .WithMessage("Large double rooms must have capacity for 2 extra beds.");
 
         }
     }

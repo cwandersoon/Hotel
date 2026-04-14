@@ -11,6 +11,7 @@ namespace HotelManagement.Models
         public int Id { get; set; }
         public DateTime ArrivalDate { get; set; }
         public DateTime DepartureDate { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
         public int ExtraBedsOrdered { get; set; }
         public int CustomerId { get; set; }
         public Customer Customer { get; set; } = null!;
@@ -18,6 +19,8 @@ namespace HotelManagement.Models
         public Room Room { get; set; } = null!;
         public Invoice? Invoice { get; set; }
         public decimal TotalPrice { get; set; }
+        public bool IsCheckedIn { get; set; }
+        public bool IsCheckedOut { get; set; }
         public bool IsDeleted { get; set; } = false;
     }
 }

@@ -11,6 +11,7 @@ namespace HotelManagement.Models
         public int Id { get; set; }
         public decimal TotalAmount { get; set; }
         public DateTime IssueDate { get; set; } = DateTime.Now;
+        public DateTime DueDate { get; set; }
         public bool IsPaid { get; set; }
         public int BookingId { get; set; }
         public Booking Booking { get; set; } = null!;

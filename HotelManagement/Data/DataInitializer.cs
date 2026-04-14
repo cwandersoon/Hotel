@@ -1,4 +1,5 @@
 ﻿using Bogus;
+using HotelManagement.Interfaces;
 using HotelManagement.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -9,6 +10,11 @@ namespace HotelManagement.Data
 {
     public class DataInitializer
     {
+        private readonly IBookingService _bookingService;
+        public DataInitializer(IBookingService bookingService)
+        {
+            _bookingService = bookingService;
+        }
         public void MigrateAndSeed(ApplicationDbContext dbContext)
         {
             dbContext.Database.Migrate();
@@ -18,6 +24,9 @@ namespace HotelManagement.Data
             dbContext.SaveChanges();
 
             SeedBookings(dbContext);
+            dbContext.SaveChanges();
+
+            SeedInvoices(dbContext);
             dbContext.SaveChanges();
         }
 
@@ -48,25 +57,20 @@ namespace HotelManagement.Data
 
                 for (int i = 1; i <= 15; i++)
                 {
-                    var roomType = i switch
+                    var roomType = i <= 7 ? RoomType.Single : RoomType.Double;
+
+                    var roomSize = roomType switch
                     {
-                        <= 8 => RoomType.Single,   
-                        <= 13 => RoomType.Double,  
-                        _ => RoomType.Suite        
+                        RoomType.Single => RoomSize.Small,
+                        RoomType.Double => (i % 2 == 0) ? RoomSize.Medium : RoomSize.Large,
+                        _ => RoomSize.Small
                     };
 
-                    var price = roomType switch
+                    var extraBeds = roomSize switch
                     {
-                        RoomType.Single => 795m,
-                        RoomType.Double => 1295m,
-                        _ => 2495m
-                    };
-
-                    var extraBeds = roomType switch
-                    {
-                        RoomType.Single => 0,
-                        RoomType.Double => 1,
-                        RoomType.Suite => 2,
+                        RoomSize.Small => 0,
+                        RoomSize.Medium => 1,
+                        RoomSize.Large => 2,
                         _ => 0
                     };
 
@@ -74,7 +78,8 @@ namespace HotelManagement.Data
                     {
                         RoomNumber = 100 + i,
                         Type = roomType,
-                        PricePerNight = price,
+                        Size = roomSize,
+                        PricePerNight = roomType == RoomType.Single ? 1000m : 1500m,
                         ExtraBedCapacity = extraBeds
                     });
                 }
@@ -90,7 +95,7 @@ namespace HotelManagement.Data
             {
                 var customers = dbContext.Customers.ToList();
                 var rooms = dbContext.Rooms.ToList();
-                var faker = new Faker();
+                var faker = new Faker("sv");
                 var bookings = new List<Booking>();
 
                 for (int i = 0; i < 10; i++)
@@ -98,21 +103,58 @@ namespace HotelManagement.Data
                     var randomCustomer = faker.PickRandom(customers);
                     var randomRoom = faker.PickRandom(rooms);
 
-                    var arrival = DateTime.Now.AddDays(faker.Random.Int(1, 14));
+                    var createdAt = DateTime.Now.AddDays(-faker.Random.Int(0, 15));
+                    var arrival = createdAt.AddDays(faker.Random.Int(1, 14));
                     var departure = arrival.AddDays(faker.Random.Int(1, 7));
+                    var extraBeds = faker.Random.Int(0, randomRoom.ExtraBedCapacity);
+
+                    var totalPrice = _bookingService.CalculateTotalPrice(
+                        randomRoom.Id,
+                        arrival,
+                        departure,
+                        extraBeds);
 
                     bookings.Add(new Booking
                     {
+                        CreatedAt = createdAt,
                         ArrivalDate = arrival,
                         DepartureDate = departure,
                         CustomerId = randomCustomer.Id,
                         RoomId = randomRoom.Id,
-                        ExtraBedsOrdered = faker.Random.Int(0, randomRoom.ExtraBedCapacity)
+                        ExtraBedsOrdered = faker.Random.Int(0, randomRoom.ExtraBedCapacity),
+                        TotalPrice = totalPrice,
+                        IsCheckedIn = arrival <= DateTime.Now,
+                        IsCheckedOut = departure <= DateTime.Now
                     });
                 }
 
                 dbContext.Bookings.AddRange(bookings);
                 Console.WriteLine("10 bookings created.");
+            }
+        }
+
+        private void SeedInvoices(ApplicationDbContext dbContext)
+        {
+            if (!dbContext.Invoices.Any())
+            {
+                var bookings = dbContext.Bookings.ToList();
+                var faker = new Faker("sv");
+                var invoices = new List<Invoice>();
+
+                foreach (var booking in bookings)
+                {
+                    invoices.Add(new Invoice
+                    {
+                        BookingId = booking.Id,
+                        IssueDate = booking.CreatedAt,
+                        DueDate = booking.CreatedAt.AddDays(10),
+                        TotalAmount = booking.TotalPrice,
+                        IsPaid = faker.Random.Bool(0.6f)
+                    });
+                }
+
+                dbContext.Invoices.AddRange(invoices);
+                Console.WriteLine($"{invoices.Count} invoices generated based on existing bookings.");
             }
         }
 

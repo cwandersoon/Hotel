@@ -36,28 +36,33 @@ namespace HotelManagement.Services
             return _mapper.Map<List<RoomDTO>>(rooms);
         }
 
-        public RoomDTO? GetRoomByNumber(int number)
+        public RoomDTO GetRoomByNumber(int number)
         {
             var room = _dbContext.Rooms.FirstOrDefault(r => r.RoomNumber == number);
             return _mapper.Map<RoomDTO>(room);
         }
 
-        public RoomDTO? GetRoomById(int roomId)
+        public RoomDTO GetRoomById(int roomId)
         {
             var room = _dbContext.Rooms.Find(roomId);
             return _mapper.Map<RoomDTO>(room);
         }
 
-        public List<RoomDTO> GetAvailableRooms(DateTime arrival, DateTime departure)
+        public List<RoomDTO> GetAvailableRooms(DateTime arrival, DateTime departure, int numberOfPeople, int? currentBookingId = null)
         {
             var occupiedRooms = _dbContext.Bookings
-                .Where(b => b.ArrivalDate < departure && b.DepartureDate > arrival)
+                .Where(b => b.ArrivalDate < departure && b.DepartureDate > arrival && b.Id != currentBookingId)
                 .Select(b => b.RoomId)
                 .Distinct()
                 .ToList();
 
             var availableRooms = _dbContext.Rooms
                 .Where(r => !occupiedRooms.Contains(r.Id))
+                .AsEnumerable()
+                .Where(r => {
+                    int beds = (r.Type == RoomType.Single) ? 1 : 2;
+                    return (beds + r.ExtraBedCapacity) >= numberOfPeople;
+                })
                 .ToList();
 
             return _mapper.Map<List<RoomDTO>>(availableRooms);

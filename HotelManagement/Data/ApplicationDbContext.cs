@@ -31,6 +31,7 @@ namespace HotelManagement.Data
                 entity.HasKey(b => b.Id);
                 entity.Property(b => b.ArrivalDate).IsRequired();
                 entity.Property(b => b.DepartureDate).IsRequired();
+                entity.Property(b => b.TotalPrice).HasPrecision(9, 2);
                 entity.HasQueryFilter(b => !b.IsDeleted);
                 entity.HasOne(b => b.Customer)
                     .WithMany(c => c.Bookings)
@@ -66,9 +67,8 @@ namespace HotelManagement.Data
                     .WithOne(b => b.Invoice)
                     .HasForeignKey<Invoice>(i => i.BookingId)
                     .OnDelete(DeleteBehavior.Cascade);
-
-
             });
+
             modelBuilder.Entity<Room>(entity =>
             {
                 entity.HasKey(r => r.Id);
@@ -76,10 +76,9 @@ namespace HotelManagement.Data
                 entity.HasIndex(r => r.RoomNumber).IsUnique();
                 entity.Property(r => r.PricePerNight).IsRequired().HasPrecision(9, 2);
                 entity.Property(r => r.Type).IsRequired().HasConversion<string>();
+                entity.Property(r => r.Size).IsRequired().HasConversion<string>();
                 entity.HasQueryFilter(r => !r.IsDeleted);
             });
-
-            
         }
     }
 }

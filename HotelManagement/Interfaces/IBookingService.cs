@@ -10,11 +10,13 @@ namespace HotelManagement.Interfaces
         int AddBooking(BookingDTO bookingDto);
         List<BookingDTO> GetAllBookings();
         List<BookingDTO> GetBookingByCustomer(int customerId);
-        BookingDTO? GetBookingById(int bookingId);
+        List<BookingDTO> GetBookingsWithoutInvoice();
+        BookingDTO GetBookingById(int bookingId);
         bool UpdateBooking(BookingDTO bookingDto);
         bool DeleteBooking(int bookingId);
-
-
+        int DeleteExpiredBookings();
+        bool CheckIn(int bookingId);
+        bool CheckOut(int bookingId);
         decimal CalculateTotalPrice(int roomId, DateTime arrival, DateTime departure, int extrabeds);
         bool IsRoomAvailable(int roomId, DateTime arrival, DateTime departure, int? currentBookingId = null);
         bool CheckExtaBedCapacity(int roomId, int requstedExtraBeds);

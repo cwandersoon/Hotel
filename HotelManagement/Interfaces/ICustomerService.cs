@@ -9,11 +9,10 @@ namespace HotelManagement.Interfaces
     {
         int AddCustomer(CustomerDTO customerDto);
         List<CustomerDTO> GetAllCustomers();
-        CustomerDTO? GetCustomerById(int customerId);
+        CustomerDTO GetCustomerById(int customerId);
         List<CustomerDTO> SearchCustomer(string name);
         bool UpdateCustomer(CustomerDTO customerDto);
         bool DeleteCustomer(int customerId);
-
         bool IsEmailUnique(string email);
     }
 }

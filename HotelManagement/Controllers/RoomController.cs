@@ -2,6 +2,7 @@
 using HotelManagement.DTOs;
 using HotelManagement.Interfaces;
 using HotelManagement.Models;
+using HotelManagement.UI;
 using Spectre.Console;
 using System;
 using System.Collections.Generic;
@@ -24,22 +25,7 @@ namespace HotelManagement.Controllers
         {
             while (true)
             {
-                AnsiConsole.Clear();
-
-                var choice = AnsiConsole.Prompt(
-                    new SelectionPrompt<string>()
-                        .Title("[yellow]Room Management[/]")
-                        .PageSize(10)
-                        .AddChoices(new[] {
-                            "List All Rooms",
-                            "Search Available Rooms",
-                            "Find Room by Number",
-                            "Add New Room",
-                            "Update Room",
-                            "Delete Room",
-                            "[red]Back to Main Menu[/]"
-                        }));
-
+                var choice = MenuUI.ShowRoomMenu();
 
                 switch (choice)
                 {
@@ -61,7 +47,7 @@ namespace HotelManagement.Controllers
                     case "Delete Room":
                         DeleteRoom();
                         break;
-                    case "[red]Back to Main Menu[/]":
+                    case "Back to Main Menu":
                         return;
                 }
                 AnsiConsole.MarkupLine("\n[grey]Press any key to return to menu...[/]");
@@ -72,26 +58,31 @@ namespace HotelManagement.Controllers
         {
             var roomDto = new RoomDTO();
 
-            AnsiConsole.MarkupLine("[yellow]Enter Room details:[/]");
-            roomDto.RoomNumber = AnsiConsole.Ask<int>("Enter [blue]room number[/]:");
-            roomDto.PricePerNight = AnsiConsole.Ask<decimal>("Enter [blue]price per night[/]:");
-            roomDto.ExtraBedCapacity = AnsiConsole.Ask<int>("Enter [blue]extra beds[/]:");
+            AnsiConsole.MarkupLine("[bold yellow]Enter Room details:[/]");
+            roomDto.RoomNumber = AnsiConsole.Ask<int>("Enter [blue]Room Number[/]:");
+            roomDto.PricePerNight = AnsiConsole.Ask<decimal>("Enter [blue]Price per night[/]:");
             roomDto.Type = AnsiConsole.Prompt(
-                new SelectionPrompt<string>()
-                    .Title("Select [blue]room type[/]:")
-                    .AddChoices(new[] { "Single", "Double", "Suite" }));
+                new SelectionPrompt<RoomType>()
+                .Title("Select [blue]Room Type[/]:")
+                .AddChoices(RoomType.Single, RoomType.Double));
 
-            var validationResult = _validator.Validate(roomDto);
-
-            if (!validationResult.IsValid)
+            if (roomDto.Type == RoomType.Double)
             {
-                AnsiConsole.MarkupLine("[red]Validation failed:[/]");
-                foreach (var error in validationResult.Errors)
-                {
-                    AnsiConsole.MarkupLine($"[red]{error.ErrorMessage}[/]");
-                }
-                return;
+                roomDto.Size = AnsiConsole.Prompt(
+                    new SelectionPrompt<RoomSize>()
+                        .Title("Select [blue]Room Size[/]:")
+                        .AddChoices(RoomSize.Medium, RoomSize.Large));
+
+                roomDto.ExtraBedCapacity = (roomDto.Size == RoomSize.Large) ? 2 : 1;
             }
+            else if (roomDto.Type == RoomType.Single)
+            {
+                roomDto.Size = RoomSize.Small;
+                roomDto.ExtraBedCapacity = 0;
+            }
+
+            if (_validator.IsInvalid(roomDto))
+                return;
 
             _roomService.AddRoom(roomDto);
             AnsiConsole.MarkupLine("\n[green]Room added successfully![/]");
@@ -101,69 +92,44 @@ namespace HotelManagement.Controllers
         {
             var rooms = _roomService.GetAllRooms();
 
-            var table = new Table();
-            table.AddColumn("ID");
-            table.AddColumn("Room Number");
-            table.AddColumn("Type");
-            table.AddColumn("Price/Night");
-            table.AddColumn("Extra beds");
-
-            foreach (var room in rooms)
+            if (!rooms.Any())
             {
-                table.AddRow(
-                    room.Id.ToString(),
-                    room.RoomNumber.ToString(),
-                    room.Type,
-                    $"{room.PricePerNight:C}",
-                    room.ExtraBedCapacity.ToString()
-                );
+                AnsiConsole.MarkupLine("[red]No rooms found in system.[/]");
+                return;
             }
-
-            AnsiConsole.Write(table);
+            TableUI.ShowRoomsTable(rooms, "All Rooms");
         }
 
         public void ShowAvailableRooms()
         {
+            AnsiConsole.MarkupLine("[bold yellow]Available Rooms:[/]");
             var arrival = AnsiConsole.Prompt(
-                    new TextPrompt<DateTime>("Arrival date (yyyy-mm-dd):")
-                        .Validate(date =>
-                        date >= DateTime.Today
-                        ? ValidationResult.Success()
-                        : ValidationResult.Error("[red]Arrival must be today or later[/]")));
+                new TextPrompt<DateTime>("Arrival date (yyyy-mm-dd):")
+                    .DefaultValue(DateTime.Today)
+                    .Validate(date =>
+                    date >= DateTime.Today
+                    ? ValidationResult.Success()
+                    : ValidationResult.Error("[red]Arrival must be today or later[/]")));
 
             var departure = AnsiConsole.Prompt(
                 new TextPrompt<DateTime>("Departure date (yyyy-mm-dd):")
+                    .DefaultValue(DateTime.Today.AddDays(1))
                     .Validate(date =>
                     date > arrival
                     ? ValidationResult.Success()
                     : ValidationResult.Error("[red]Departure must be after arrival[/]")));
 
-            var availableRooms = _roomService.GetAvailableRooms(arrival, departure);
+            var numberOfPeople = AnsiConsole.Ask<int>("Number of people for the booking?");
+
+            var availableRooms = _roomService.GetAvailableRooms(arrival, departure, numberOfPeople);
 
             if (!availableRooms.Any())
             {
-                AnsiConsole.MarkupLine("[yellow]No rooms available for these dates.[/]");
+                AnsiConsole.MarkupLine("[red]No rooms available for these dates.[/]");
                 return;
             }
 
-            var table = new Table()
-                .Title($"[green]Available Rooms from {arrival:yyyy-MM-dd} to {departure:yyyy-MM-dd}[/]");
-            table.AddColumn("Room Number");
-            table.AddColumn("Type");
-            table.AddColumn("Price");
-            table.AddColumn("Extra beds");
-
-            foreach (var room in availableRooms)
-            {
-                table.AddRow(
-                    room.RoomNumber.ToString(),
-                    room.Type,
-                    $"{room.PricePerNight:C}",
-                    room.ExtraBedCapacity.ToString()
-                );
-            }
-
-            AnsiConsole.Write(table);
+            TableUI.ShowRoomsTable(availableRooms, $"Available Rooms from {arrival:yyyy-MM-dd} to {departure:yyyy-MM-dd}");
         }
 
         private void SearchRoom()
@@ -178,83 +144,71 @@ namespace HotelManagement.Controllers
                 return;
             }
 
-            var table = new Table()
-                .Title($"[bold yellow]Result for Room {number}[/]");
-            table.AddColumn("Room Number");
-            table.AddColumn("Type");
-            table.AddColumn("Price");
-            table.AddColumn("Extra beds");
-
-            table.AddRow(
-                room.RoomNumber.ToString(),
-                room.Type,
-                $"{room.PricePerNight:C}",
-                room.ExtraBedCapacity.ToString()
-            );
-
-            AnsiConsole.Write(table);
+            TableUI.ShowRoomsTable(new List<RoomDTO> { room }, $"Result for Room {number}");
         }
 
         public void UpdateRoom()
         {
-            var allRooms = _roomService.GetAllRooms();
+            var rooms = _roomService.GetAllRooms();
 
-            if (!allRooms.Any())
+            if (!rooms.Any())
             {
                 AnsiConsole.MarkupLine("[red]No rooms available to update.[/]");
                 return;
             }
 
-            var selectedRoom = AnsiConsole.Prompt(
-                new SelectionPrompt<RoomDTO>()
-                    .Title("Select a [yellow]room to update[/]:")
-                    .PageSize(20)
-                    .UseConverter(r => $"Room {r.RoomNumber} - {r.Type}")
-                    .AddChoices(allRooms));
+            TableUI.ShowRoomsTable(rooms, "Select Room to Update");
 
-            var roomToUpdate = _roomService.GetRoomById(selectedRoom.Id);
+            var roomId = AnsiConsole.Prompt(
+                new TextPrompt<int>("Enter [blue]ID[/] of the Room to Delete:")
+                    .DefaultValue(0));
+
+            if (roomId == 0)
+                return;
+
+            var roomToUpdate = rooms.FirstOrDefault(r => r.Id == roomId);
 
             if (roomToUpdate == null)
             {
-                AnsiConsole.MarkupLine("[red]Error: Room could not be found in database.[/]");
+                AnsiConsole.MarkupLine("[red]Room could not be found in database.[/]");
                 return;
             }
 
-            var newRoomNumber = AnsiConsole.Ask<int>(
-                $"Enter new [blue]number[/] (Current: [blue]{roomToUpdate.RoomNumber}[/])");
+            roomToUpdate.RoomNumber = AnsiConsole.Prompt(
+                new TextPrompt<int>($"Enter new [blue]Room Number[/]:")
+                    .DefaultValue(roomToUpdate.RoomNumber));
 
-            var newPrice = AnsiConsole.Ask<decimal>(
-                $"Enter new [blue]price[/] (Current: [blue]{roomToUpdate.PricePerNight:C}[/])");
+            roomToUpdate.PricePerNight = AnsiConsole.Prompt(
+                new TextPrompt<decimal>($"Enter new [blue]Price per night[/]:")
+                    .DefaultValue(roomToUpdate.PricePerNight));
 
             var newType = AnsiConsole.Prompt(
-                new SelectionPrompt<string>()
-                    .Title("Select new [blue]room type[/]:")
-                    .AddChoices(new[] { "Single", "Double", "Suite" }));
+                new SelectionPrompt<RoomType>()
+                    .Title("Select new [blue]Room Type[/]:")
+                    .AddChoices(RoomType.Single, RoomType.Double));
 
-            var newExtraBeds = AnsiConsole.Ask<int>(
-                $"Enter how many [blue]extra beds[/] (Current: [blue]{roomToUpdate.ExtraBedCapacity}[/])");
-
-            roomToUpdate.RoomNumber = newRoomNumber;
-            roomToUpdate.PricePerNight = newPrice;
-            roomToUpdate.Type = newType;
-            roomToUpdate.ExtraBedCapacity = newExtraBeds;
-
-            var results = _validator.Validate(roomToUpdate);
-            if (!results.IsValid)
+            if (newType == RoomType.Double)
             {
-                foreach (var error in results.Errors)
-                {
-                    AnsiConsole.MarkupLine($"- [yellow]{error.ErrorMessage}[/]");
-                }
-                AnsiConsole.WriteLine("Press any key to try again.");
-                Console.ReadKey(true);
-                return;
+                roomToUpdate.Size = AnsiConsole.Prompt(
+                    new SelectionPrompt<RoomSize>()
+                        .Title("Select new [blue]Room Size[/]:")
+                        .AddChoices(RoomSize.Medium, RoomSize.Large));
+
+                roomToUpdate.ExtraBedCapacity = (roomToUpdate.Size == RoomSize.Large) ? 2 : 1;
+            }
+            else if (newType == RoomType.Single)
+            {
+                roomToUpdate.Size = RoomSize.Small;
+                roomToUpdate.ExtraBedCapacity = 0;
             }
 
+            if (_validator.IsInvalid(roomToUpdate))
+                return;
+
             if (_roomService.UpdateRoom(roomToUpdate))
-                AnsiConsole.MarkupLine("\n[bold green]Room updated successfully![/]");
+                AnsiConsole.MarkupLine("\n[green]Room updated successfully![/]");
             else
-                AnsiConsole.MarkupLine("\n[bold red]Failed to update room.[/]");
+                AnsiConsole.MarkupLine("\n[red]Failed to update room.[/]");
         }
 
         public void DeleteRoom()
@@ -267,18 +221,29 @@ namespace HotelManagement.Controllers
                 return;
             }
 
-            var roomToDelete = AnsiConsole.Prompt(
-                new SelectionPrompt<RoomDTO>()
-                    .Title("Select a [red]room to delete[/]:")
-                    .UseConverter(r => $"Room {r.RoomNumber}")
-                    .AddChoices(rooms));
+            TableUI.ShowRoomsTable(rooms, "Select Room to Delete");
+
+            var roomId = AnsiConsole.Prompt(
+                new TextPrompt<int>("Enter [blue]ID[/] of the Room to Delete:")
+                    .DefaultValue(0));
+
+            if (roomId == 0)
+                return;
+
+            var roomToDelete = rooms.FirstOrDefault(r => r.Id == roomId);
+
+            if (roomToDelete == null)
+            {
+                AnsiConsole.MarkupLine("[red]No room found with that ID.[/]");
+                return;
+            }
 
             if (AnsiConsole.Confirm($"Are you sure you want to delete room {roomToDelete.RoomNumber}?"))
             {
                 if (_roomService.DeleteRoom(roomToDelete.Id))
-                    AnsiConsole.MarkupLine("\n[green]Room deleted (soft delete).[/]");
+                    AnsiConsole.MarkupLine("\n[green]Room deleted successfully (soft delete).[/]");
                 else
-                    AnsiConsole.MarkupLine("\n[red]Cannot delete room with active bookings![/]");
+                    AnsiConsole.MarkupLine("\n[red]Cannot delete room with current bookings![/]");
             }
         }
 
