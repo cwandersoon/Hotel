@@ -103,7 +103,7 @@ namespace HotelManagement.Data
                     var randomCustomer = faker.PickRandom(customers);
                     var randomRoom = faker.PickRandom(rooms);
 
-                    var createdAt = DateTime.Now.AddDays(-faker.Random.Int(0, 15));
+                    var createdAt = DateTime.Now.AddDays(-faker.Random.Int(0, 20));
                     var arrival = createdAt.AddDays(faker.Random.Int(1, 14));
                     var departure = arrival.AddDays(faker.Random.Int(1, 7));
                     var extraBeds = faker.Random.Int(0, randomRoom.ExtraBedCapacity);
@@ -149,7 +149,7 @@ namespace HotelManagement.Data
                         IssueDate = booking.CreatedAt,
                         DueDate = booking.CreatedAt.AddDays(10),
                         TotalAmount = booking.TotalPrice,
-                        IsPaid = faker.Random.Bool(0.6f)
+                        IsPaid = faker.Random.Bool(0.1f)
                     });
                 }
 

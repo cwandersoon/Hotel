@@ -25,6 +25,8 @@ namespace HotelManagement.Controllers
         {
             while (true)
             {
+                AnsiConsole.Clear();
+
                 var choice = MenuUI.ShowRoomMenu();
 
                 switch (choice)
@@ -59,12 +61,27 @@ namespace HotelManagement.Controllers
             var roomDto = new RoomDTO();
 
             AnsiConsole.MarkupLine("[bold yellow]Enter Room details:[/]");
-            roomDto.RoomNumber = AnsiConsole.Ask<int>("Enter [blue]Room Number[/]:");
-            roomDto.PricePerNight = AnsiConsole.Ask<decimal>("Enter [blue]Price per night[/]:");
+
+            roomDto.RoomNumber = AnsiConsole.Prompt(
+                new TextPrompt<int>("Enter [blue]Room Number[/]:")
+                    .Validate(n => {
+                        if (n <= 0)
+                            return ValidationResult.Error("[red]Must be greater than 0.[/]");
+                        if (!_roomService.IsRoomNumberUnique(n))
+                            return ValidationResult.Error("[red]Room number already exists![/]");
+                        return ValidationResult.Success();
+                    }));
+
+            roomDto.PricePerNight = AnsiConsole.Prompt(
+                new TextPrompt<decimal>("Enter [blue]Price per night[/]:")
+                    .Validate(p => p > 0
+                        ? ValidationResult.Success()
+                        : ValidationResult.Error("[red]Price must be a greater than 0.[/]")));
+
             roomDto.Type = AnsiConsole.Prompt(
                 new SelectionPrompt<RoomType>()
-                .Title("Select [blue]Room Type[/]:")
-                .AddChoices(RoomType.Single, RoomType.Double));
+                    .Title("Select [blue]Room Type[/]:")
+                    .AddChoices(RoomType.Single, RoomType.Double));
 
             if (roomDto.Type == RoomType.Double)
             {
@@ -92,11 +109,8 @@ namespace HotelManagement.Controllers
         {
             var rooms = _roomService.GetAllRooms();
 
-            if (!rooms.Any())
-            {
-                AnsiConsole.MarkupLine("[red]No rooms found in system.[/]");
-                return;
-            }
+            ValidateUI.IsEmpty(rooms, "No rooms found.");
+
             TableUI.ShowRoomsTable(rooms, "All Rooms");
         }
 
@@ -106,35 +120,37 @@ namespace HotelManagement.Controllers
             var arrival = AnsiConsole.Prompt(
                 new TextPrompt<DateTime>("Arrival date (yyyy-mm-dd):")
                     .DefaultValue(DateTime.Today)
-                    .Validate(date =>
-                    date >= DateTime.Today
-                    ? ValidationResult.Success()
-                    : ValidationResult.Error("[red]Arrival must be today or later[/]")));
+                    .Validate(date => date >= DateTime.Today
+                        ? ValidationResult.Success()
+                        : ValidationResult.Error("[red]Arrival must be today or later[/]")));
 
             var departure = AnsiConsole.Prompt(
                 new TextPrompt<DateTime>("Departure date (yyyy-mm-dd):")
                     .DefaultValue(DateTime.Today.AddDays(1))
-                    .Validate(date =>
-                    date > arrival
-                    ? ValidationResult.Success()
-                    : ValidationResult.Error("[red]Departure must be after arrival[/]")));
+                    .Validate(date => date > arrival
+                        ? ValidationResult.Success()
+                        : ValidationResult.Error("[red]Departure must be after arrival[/]")));
 
-            var numberOfPeople = AnsiConsole.Ask<int>("Number of people for the booking?");
+            var numberOfPeople = AnsiConsole.Prompt(
+                new TextPrompt<int>("Enter [blue]Number of people[/] for the booking:")
+                    .Validate(n => n > 0
+                        ? ValidationResult.Success()
+                        : ValidationResult.Error("[red]Number of people must be greater than 0.[/]")));
 
             var availableRooms = _roomService.GetAvailableRooms(arrival, departure, numberOfPeople);
 
-            if (!availableRooms.Any())
-            {
-                AnsiConsole.MarkupLine("[red]No rooms available for these dates.[/]");
-                return;
-            }
+            ValidateUI.IsEmpty(availableRooms, "No rooms available for these dates.");
 
             TableUI.ShowRoomsTable(availableRooms, $"Available Rooms from {arrival:yyyy-MM-dd} to {departure:yyyy-MM-dd}");
         }
 
         private void SearchRoom()
         {
-            var number = AnsiConsole.Ask<int>("Enter [blue]Room Number[/] to search for:");
+            var number = AnsiConsole.Prompt(
+                new TextPrompt<int>("Enter [blue]Room Number[/] to search for:")
+                    .Validate(n => n > 0
+                        ? ValidationResult.Success()
+                        : ValidationResult.Error("[red]Room Number must be greater than 0.[/]")));
 
             var room = _roomService.GetRoomByNumber(number);
 
@@ -151,36 +167,35 @@ namespace HotelManagement.Controllers
         {
             var rooms = _roomService.GetAllRooms();
 
-            if (!rooms.Any())
-            {
-                AnsiConsole.MarkupLine("[red]No rooms available to update.[/]");
-                return;
-            }
+            ValidateUI.IsEmpty(rooms, "No rooms available to update");
 
             TableUI.ShowRoomsTable(rooms, "Select Room to Update");
 
             var roomId = AnsiConsole.Prompt(
-                new TextPrompt<int>("Enter [blue]ID[/] of the Room to Delete:")
-                    .DefaultValue(0));
+                new TextPrompt<int>("Enter [blue]ID[/] of Room to Update:")
+                    .DefaultValue(0)
+                    .Validate(id => id == 0 || rooms.Any(r => r.Id == id)
+                            ? ValidationResult.Success()
+                            : ValidationResult.Error("[red]Invalid Room ID.[/]")));
 
             if (roomId == 0)
                 return;
 
-            var roomToUpdate = rooms.FirstOrDefault(r => r.Id == roomId);
-
-            if (roomToUpdate == null)
-            {
-                AnsiConsole.MarkupLine("[red]Room could not be found in database.[/]");
-                return;
-            }
+            var roomToUpdate = rooms.First(r => r.Id == roomId);
 
             roomToUpdate.RoomNumber = AnsiConsole.Prompt(
-                new TextPrompt<int>($"Enter new [blue]Room Number[/]:")
-                    .DefaultValue(roomToUpdate.RoomNumber));
+                new TextPrompt<int>("Enter new [blue]Room Number[/]:")
+                    .DefaultValue(roomToUpdate.RoomNumber)
+                    .Validate(n => n > 0
+                        ? ValidationResult.Success()
+                        : ValidationResult.Error("[red]Room number must be greater than 0.[/]")));
 
             roomToUpdate.PricePerNight = AnsiConsole.Prompt(
-                new TextPrompt<decimal>($"Enter new [blue]Price per night[/]:")
-                    .DefaultValue(roomToUpdate.PricePerNight));
+                new TextPrompt<decimal>("Enter new [blue]Price per night[/]:")
+                    .DefaultValue(roomToUpdate.PricePerNight)
+                    .Validate(p => p > 0
+                        ? ValidationResult.Success()
+                        : ValidationResult.Error("[red]Price must be a greater than 0.[/]")));
 
             var newType = AnsiConsole.Prompt(
                 new SelectionPrompt<RoomType>()
@@ -215,28 +230,21 @@ namespace HotelManagement.Controllers
         {
             var rooms = _roomService.GetAllRooms();
 
-            if (!rooms.Any())
-            {
-                AnsiConsole.MarkupLine("[red]No rooms to delete.[/]");
-                return;
-            }
+            ValidateUI.IsEmpty(rooms, "No rooms available to delete");
 
             TableUI.ShowRoomsTable(rooms, "Select Room to Delete");
 
             var roomId = AnsiConsole.Prompt(
-                new TextPrompt<int>("Enter [blue]ID[/] of the Room to Delete:")
-                    .DefaultValue(0));
+                new TextPrompt<int>("Enter [blue]ID[/] of Room to Delete:")
+                    .DefaultValue(0)
+                    .Validate(id => id == 0 || rooms.Any(r => r.Id == id)
+                            ? ValidationResult.Success()
+                            : ValidationResult.Error("[red]Invalid Room ID.[/]")));
 
             if (roomId == 0)
                 return;
 
-            var roomToDelete = rooms.FirstOrDefault(r => r.Id == roomId);
-
-            if (roomToDelete == null)
-            {
-                AnsiConsole.MarkupLine("[red]No room found with that ID.[/]");
-                return;
-            }
+            var roomToDelete = rooms.First(r => r.Id == roomId);
 
             if (AnsiConsole.Confirm($"Are you sure you want to delete room {roomToDelete.RoomNumber}?"))
             {

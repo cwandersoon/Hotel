@@ -1,0 +1,37 @@
+﻿
+1NF - The Key
+- Varje cell i tabellerna innehåller endast ett värde
+- Varje rad är unik
+- Varje kolumn har endast en datatyp
+- Varje tabell har en primary key
+
+2NF - The Whole Key
+- All information i en rad hör ihop med den specifika PK.
+- Ingen kolumn beror bara på en del av PK -- Jag använder inga sammansatta nycklar.
+   
+3NF - Nothing but the Key
+- Inga värden i kolumnerna påverkar värden i andra kolumner (inga beroenden). Allt beror på PK.
+
+
+Mina tabeller
+(och undantag)
+
+Room
+
+I Room-tabellen så finns ett samband mellan Size/Type och ExtraBedCapacity (Id -> Size -> ExtraBedCapacity).
+Om man följer 3NF strikt så skulle detta läggas i en separat tabell för rumsmallar.
+Jag har valt att behålla fältet i Room för att kunna hantera undantag på specifika rum och för att göra sökningar snabbare och enklare.
+
+Customer
+
+För att följa 3NF i Customer så hade jag behövt lägga ZipCode och City i en egen tabell eftersom det finns beroende (Id -> ZipCode -> City).
+Men det känns omständigt och dyrt att behöva göra en JOIN varje gång man ska visa en kundlista.
+
+Booking + Invoice
+
+I Booking och Invoice så är TotalPrice/TotalAmount uträknad baserat på andra fält som
+(ArrivalDate, DepartureDate, ExtraBedsOrdered och PricePerNight).
+Men jag har valt ha med dem för att kunna spara priset vid bokning som historik. 
+Om rumspriser ändras i framtiden ska inte priset på gamla bokningar eller fakturor påverkas.
+Priset blir då ett unikt för just den raden.
+

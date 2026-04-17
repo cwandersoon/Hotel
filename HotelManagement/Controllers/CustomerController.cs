@@ -26,6 +26,8 @@ namespace HotelManagement.Controllers
         {
             while (true)
             {
+                AnsiConsole.Clear();
+
                 var choice = MenuUI.ShowCustomerMenu();
 
                 switch (choice)
@@ -59,9 +61,29 @@ namespace HotelManagement.Controllers
             var customerDto = new CustomerDTO();
 
             AnsiConsole.MarkupLine("[bold yellow]Enter customer details:[/]");
-            customerDto.FirstName = AnsiConsole.Ask<string>("Enter [blue]First Name[/]:");
-            customerDto.LastName = AnsiConsole.Ask<string>("Enter [blue]Last Name[/]:");
-            customerDto.Email = AnsiConsole.Ask<string>("Enter [blue]Email[/]:");
+
+            customerDto.FirstName = AnsiConsole.Prompt(
+                new TextPrompt<string>("Enter [blue]First Name[/]:")
+                    .Validate(s => !string.IsNullOrWhiteSpace(s)
+                        ? ValidationResult.Success()
+                        : ValidationResult.Error("[red]First name is required.[/]")));
+
+            customerDto.LastName = AnsiConsole.Prompt(
+                new TextPrompt<string>("Enter [blue]Last Name[/]:")
+                    .Validate(s => !string.IsNullOrWhiteSpace(s)
+                        ? ValidationResult.Success()
+                        : ValidationResult.Error("[red]Last name is required.[/]")));
+
+            customerDto.Email = AnsiConsole.Prompt(
+                new TextPrompt<string>("Enter [blue]Email[/]:")
+                    .Validate(email => {
+                        if (string.IsNullOrWhiteSpace(email) || !email.Contains("@"))
+                            return ValidationResult.Error("[red]Enter a valid email address[/]");
+                        if (!_customerService.IsEmailUnique(email))
+                            return ValidationResult.Error("[red]This email is already in use![/]");
+                        return ValidationResult.Success();
+                    }));
+
             customerDto.Phone = AnsiConsole.Ask<string>("Enter [blue]Phone[/]:");
             customerDto.StreetAddress = AnsiConsole.Ask<string>("Enter [blue]Street Address[/]:");
             customerDto.ZipCode = AnsiConsole.Ask<string>("Enter [blue]Zip Code[/]:");
@@ -81,11 +103,7 @@ namespace HotelManagement.Controllers
         {
             var customers = _customerService.GetAllCustomers();
 
-            if (!customers.Any())
-            {
-                AnsiConsole.MarkupLine("[red]No customers found in system.[/]");
-                return;
-            }
+            ValidateUI.IsEmpty(customers, "No customers found.");
 
             TableUI.ShowCustomersTable(customers, "All Customers");
         }
@@ -96,11 +114,7 @@ namespace HotelManagement.Controllers
 
             var customerSearch = _customerService.SearchCustomer(name);
 
-            if (!customerSearch.Any())
-            {
-                AnsiConsole.MarkupLine($"[red]No customers found matching '{name}'.[/]");
-                return;
-            }
+            ValidateUI.IsEmpty(customerSearch, $"No customers found matching {name}.");
 
             TableUI.ShowCustomersTable(customerSearch, $"Search Results for: {name}");
         }
@@ -109,56 +123,69 @@ namespace HotelManagement.Controllers
         {
             var allCustomers = _customerService.GetAllCustomers();
 
-            if (!allCustomers.Any())
-            {
-                AnsiConsole.MarkupLine("[red]No customers available to update.[/]");
-                return;
-            }
+            ValidateUI.IsEmpty(allCustomers, "No customers available to update");
 
             TableUI.ShowCustomersTable(allCustomers, "Select Customer to Update");
+
             var customerId = AnsiConsole.Prompt(
-                new TextPrompt<int>("Enter [blue]ID[/] of the Customer to Update:")
-                    .DefaultValue(0));
+                new TextPrompt<int>("Enter [blue]ID[/] of Customer to Update:")
+                    .DefaultValue(0)
+                    .Validate(id => id == 0 || allCustomers.Any(c => c.Id == id)
+                        ? ValidationResult.Success()
+                        : ValidationResult.Error("[red]Invalid Customer ID.[/]")));
 
             if (customerId == 0) 
                 return;
 
-            var customerToUpdate = allCustomers.FirstOrDefault(c => c.Id == customerId);
-
-            if (customerToUpdate == null)
-            {
-                AnsiConsole.MarkupLine("[red]Customer could not be found.[/]");
-                return;
-            }
+            var customerToUpdate = allCustomers.First(c => c.Id == customerId);
 
             AnsiConsole.MarkupLine($"[bold yellow]Updating Customer: {customerToUpdate.FullName}[/]");
 
             customerToUpdate.FirstName = AnsiConsole.Prompt(
-                new TextPrompt<string>("New [blue]First Name[/]:")
-                    .DefaultValue(customerToUpdate.FirstName));
+                new TextPrompt<string>("Enter new [blue]First Name[/]:")
+                    .DefaultValue(customerToUpdate.FirstName)
+                    .Validate(s => !string.IsNullOrWhiteSpace(s)
+                        ? ValidationResult.Success()
+                        : ValidationResult.Error("[red]First Name is required.[/]")));
 
             customerToUpdate.LastName = AnsiConsole.Prompt(
-                new TextPrompt<string>("New [blue]Last Name[/]:")
-                    .DefaultValue(customerToUpdate.LastName));
+                new TextPrompt<string>("Enter new [blue]Last Name[/]:")
+                    .DefaultValue(customerToUpdate.LastName)
+                    .Validate(s => !string.IsNullOrWhiteSpace(s)
+                        ? ValidationResult.Success()
+                        : ValidationResult.Error("[red]Last Name is required.[/]")));
 
             customerToUpdate.Email = AnsiConsole.Prompt(
-                new TextPrompt<string>("New [blue]Email[/]:")
-                    .DefaultValue(customerToUpdate.Email));
+                new TextPrompt<string>("Enter new [blue]Email[/]:")
+                    .DefaultValue(customerToUpdate.Email)
+                    .Validate(email =>
+                    {
+                        if (string.IsNullOrWhiteSpace(email) || !email.Contains("@"))
+                            return ValidationResult.Error("[red]Enter a valid email address[/]");
+
+                        var IsEmailUnique = _customerService.IsEmailUnique(email);
+                        var IsEmailOwn = email == customerToUpdate.Email;
+
+                        if (!IsEmailOwn && !IsEmailUnique)
+                            return ValidationResult.Error("[red]This email is already in use![/]");
+
+                        return ValidationResult.Success();
+                    }));
 
             customerToUpdate.Phone = AnsiConsole.Prompt(
-                new TextPrompt<string>("New [blue]Phone[/]:")
+                new TextPrompt<string>("Enter new [blue]Phone[/]:")
                     .DefaultValue(customerToUpdate.Phone));
 
             customerToUpdate.StreetAddress = AnsiConsole.Prompt(
-                new TextPrompt<string>("New [blue]Address[/]:")
+                new TextPrompt<string>("Enter new [blue]Address[/]:")
                     .DefaultValue(customerToUpdate.StreetAddress));
 
             customerToUpdate.ZipCode = AnsiConsole.Prompt(
-                new TextPrompt<string>("New [blue]ZipCode[/]:")
+                new TextPrompt<string>("Enter new [blue]ZipCode[/]:")
                     .DefaultValue(customerToUpdate.ZipCode));
 
             customerToUpdate.City = AnsiConsole.Prompt(
-                new TextPrompt<string>("New [blue]City[/]:")
+                new TextPrompt<string>("Enter new [blue]City[/]:")
                     .DefaultValue(customerToUpdate.City));
 
             if (_validator.IsInvalid(customerToUpdate))
@@ -174,28 +201,21 @@ namespace HotelManagement.Controllers
         {
             var customers = _customerService.GetAllCustomers();
 
-            if (!customers.Any())
-            {
-                AnsiConsole.MarkupLine("[red]No customers found to delete.[/]");
-                return;
-            }
+            ValidateUI.IsEmpty(customers, "No customers found to delete.");
 
             TableUI.ShowCustomersTable(customers, "Select Customer to Delete");
 
             var customerId = AnsiConsole.Prompt(
-                new TextPrompt<int>("Enter [blue]ID[/] of the Customer to Delete:")
-                    .DefaultValue(0));
+                new TextPrompt<int>("Enter [blue]ID[/] of Customer to Delete:")
+                    .DefaultValue(0)
+                    .Validate(id => id == 0 || customers.Any(c => c.Id == id)
+                        ? ValidationResult.Success()
+                        : ValidationResult.Error("[red]Invalid Customer ID.[/]")));
 
             if (customerId == 0)
                 return;
 
-            var customerToDelete = customers.FirstOrDefault(c => c.Id == customerId);
-
-            if (customerToDelete == null)
-            {
-                AnsiConsole.MarkupLine("[red]Customer not found.[/]");
-                return;
-            }
+            var customerToDelete = customers.First(c => c.Id == customerId);
 
             AnsiConsole.MarkupLine($"You are about to delete customer: [blue]{customerToDelete.FullName}[/].");
 

@@ -31,5 +31,15 @@ namespace HotelManagement.UI
             Console.ReadKey(true);
         }
 
+        public static bool IsEmpty<T>(this IEnumerable<T> source, string message)
+        {
+            if (source == null || !source.Any())
+            {
+                AnsiConsole.MarkupLine($"[red]{message}[/]");
+                return true;
+            }
+            return false;
+        }
+
     }
 }

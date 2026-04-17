@@ -9,7 +9,6 @@ namespace HotelManagement.UI
     {
         public static string ShowMainMenu()
         {
-            AnsiConsole.Clear();
             return AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
                     .Title("[bold yellow]Main Menu[/]")
@@ -23,7 +22,6 @@ namespace HotelManagement.UI
         }
         public static string ShowBookingMenu()
         {
-            AnsiConsole.Clear();
             return AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
                     .Title("[bold yellow]Booking Management[/]")
@@ -41,7 +39,6 @@ namespace HotelManagement.UI
 
         public static string ShowCustomerMenu()
         {
-            AnsiConsole.Clear();
             return AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
                     .Title("[bold yellow]Customer Management[/]")
@@ -57,7 +54,6 @@ namespace HotelManagement.UI
 
         public static string ShowInvoiceMenu()
         {
-            AnsiConsole.Clear();
             return AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
                     .Title("[bold yellow]Invoice Management[/]")
@@ -73,7 +69,6 @@ namespace HotelManagement.UI
 
         public static string ShowRoomMenu()
         {
-            AnsiConsole.Clear();
             return AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
                     .Title("[bold yellow]Room Management[/]")

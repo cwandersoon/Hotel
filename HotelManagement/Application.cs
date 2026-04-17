@@ -42,8 +42,13 @@ namespace HotelManagement
         {
             _dataInitializer.MigrateAndSeed(_dbContext);
 
+            AnsiConsole.MarkupLine("\n[grey]Press any key to enter Main Menu.[/]");
+            Console.ReadKey(true);
+
             while (true)
             {
+                AnsiConsole.Clear();
+
                 var choice = MenuUI.ShowMainMenu();
 
                 switch (choice)
